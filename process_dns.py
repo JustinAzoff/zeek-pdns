@@ -61,16 +61,14 @@ class SqliteStore:
         self.conn = conn
         self.c = conn.cursor()
 
-    def upsert_record(self, q,t,a,ttl,time,count):
+    def upsert_record(self, query, type, answer, ttl, time,count):
         c = self.c
         n = ts(float(time)).strftime("%Y-%m-%d %H:%M:%S")
         ttl = ttl != "-" and int(float(ttl)) or None
-        c.execute("update dns set last=?, ttl=?, count=count+? where query=? and type=? and answer=?", (n, ttl, count, q,t,a))
+        c.execute("update dns set last=?, ttl=?, count=count+? where query=? and type=? and answer=?", (n, ttl, count, query, type , answer))
         if c.rowcount:
             return
-        c.execute("insert into dns (query, type, answer, ttl, count, first, last) VALUES (?, ?, ?, ?, ?, ?, ?)", (q, t, a, ttl, count, n, n))
-
-        #possibly do what http://stackoverflow.com/questions/418898/sqlite-upsert-not-insert-or-replace shows
+        c.execute("insert into dns (query, type, answer, ttl, count, first, last) VALUES (?, ?, ?, ?, ?, ?, ?)", (query, type, answer, ttl, count, n, n))
 
     def begin(self):
         self.c.execute("begin");
@@ -78,7 +76,8 @@ class SqliteStore:
     def commit(self):
         self.conn.commit()
 
-def process(f):
+def aggregate_file(f):
+
     pairs = defaultdict(int)
     ttls = {}
     times = {}
@@ -92,15 +91,28 @@ def process(f):
             ttls[tup] = ttl
             times[tup] = rec["ts"]
 
-    store = SqliteStore()
-    store.begin()
 
     for tup, count in pairs.iteritems():
         (q,t,a) = tup
         #print "q=%s t=%s a=%s c=%s" % (q,t,a,count)
         ttl = ttls[tup]
         time = times[tup]
-        store.upsert_record(q,t,a,ttl,time,count)
+        yield {
+            "query": q,
+            "type": t,
+            "answer": a,
+            "ttl": ttl,
+            "time": time,
+            "count": count,
+        }
+
+def process(f):
+    store = SqliteStore()
+    store.begin()
+
+    for rec in aggregate_file(f):
+        store.upsert_record(**rec)
+
     store.commit()
     print "processed %d records" % len(pairs)
 

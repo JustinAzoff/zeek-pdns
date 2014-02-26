@@ -1,4 +1,5 @@
 @load base/protocols/dns
+@load dns-ans-query
 
 # process DNS logs
 function process_log(info: Log::RotationInfo) : bool
