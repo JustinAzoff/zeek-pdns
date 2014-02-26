@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 from collections import defaultdict
+import os
 import sys
 import datetime
 from sqlalchemy import create_engine
 
 from sqlalchemy import Table, Column, Integer, String, MetaData, DateTime
 metadata = MetaData()
+#web
+from bottle import route, run, template, Bottle
 
 dns_table = Table('dns', metadata,
     Column('query', String, primary_key=True, index=True),
@@ -51,8 +54,14 @@ def reader(f):
 ts = datetime.datetime.fromtimestamp
 
 class SQLStore:
-    def __init__(self):
-        self.engine = engine = create_engine("sqlite:///dns.db")
+    def __init__(self, db_uri=None):
+        uri = db_uri
+        if not uri:
+            uri = os.getenv("BRO_PDNS_DB")
+        if not uri:
+            raise RuntimeError("db_uri is not set. set BRO_PDNS_DB environment variable perhaps?")
+
+        self.engine = engine = create_engine(uri)
         metadata.create_all(engine)
         self.conn = engine.connect()
 
@@ -138,8 +147,7 @@ def process():
     f = sys.argv[2]
     process_fn(f)
 
-#web stuff
-from bottle import route, run, template, Bottle
+#api
 
 def fixup(record):
     r = dict(record)

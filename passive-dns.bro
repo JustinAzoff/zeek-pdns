@@ -1,11 +1,18 @@
 @load base/protocols/dns
 @load dns-ans-query
 
+module PDNS;
+
+export {
+    const tool = "/bro/tools/bro_pdns.py" &redef;
+    const uri = "sqlite:////bro/logs/dns.db" &redef;
+}
+
 # process DNS logs
 function process_log(info: Log::RotationInfo) : bool
 {
 
-    local cmd = fmt("/bro/tools/process_dns.py %s && rm %s", info$fname, info$fname);
+    local cmd = fmt("BRO_PDNS_DB=%s %s process %s && rm %s", uri, tool, info$fname, info$fname);
     when (local res = Exec::run([$cmd=cmd])) {
         ## do nothing
     }
