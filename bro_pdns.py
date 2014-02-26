@@ -2,7 +2,21 @@
 from collections import defaultdict
 import sys
 import datetime
-import sqlite3
+from sqlalchemy import create_engine
+
+from sqlalchemy import Table, Column, Integer, String, MetaData, DateTime
+metadata = MetaData()
+
+dns_table = Table('dns', metadata,
+    Column('query', String, primary_key=True, index=True),
+    Column('type', String, primary_key=True),
+    Column('answer', String, primary_key=True, index=True),
+    Column('count', Integer),
+    Column('ttl', Integer),
+    Column('first', DateTime),
+    Column('last', DateTime),
+)
+
 
 def reader(f):
     line = ''
@@ -36,61 +50,52 @@ def reader(f):
 
 ts = datetime.datetime.fromtimestamp
 
-class SqliteStore:
+class SQLStore:
     def __init__(self):
-        conn = sqlite3.connect("/bro/logs/dns.db")
-        c = conn.cursor()
+        self.engine = engine = create_engine("sqlite:///dns.db")
+        metadata.create_all(engine)
+        self.conn = engine.connect()
 
-        # Create table
-        try :
-            c.execute('''CREATE TABLE dns (
-                query text,
-                type text,
-                answer text,
-                count UNSIGNED BIG INT,
-                ttl INT,
-                first text,
-                last text)''')
-
-            c.execute('''Create unique index if not exists record on dns(query,type,answer)''')
-            c.execute('''CREATE INDEX if not exists idx_answer on dns(answer)''')
-            c.execute('''CREATE INDEX if not exists idx_query on dns(query)''')
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass
-        self.conn = conn
-        self.c = conn.cursor()
+        self._select = dns_table.select()
+        self._insert = dns_table.insert()
+        self._update = dns_table.update()
 
     def upsert_record(self, query, type, answer, ttl, time,count):
-        c = self.c
-        n = ts(float(time)).strftime("%Y-%m-%d %H:%M:%S")
+        d = dns_table.c
+        n = ts(float(time))
         ttl = ttl != "-" and int(float(ttl)) or None
-        c.execute("update dns set last=?, ttl=?, count=count+? where query=? and type=? and answer=?", (n, ttl, count, query, type , answer))
-        if c.rowcount:
+        q = self._update.where( (d.query == query) & (d.type == type) & (d.answer == answer)).values(
+            count=d.count+1,
+            last=n,
+            ttl=ttl
+        )
+        ret = self.conn.execute(q)
+        if ret.rowcount:
             return
-        c.execute("insert into dns (query, type, answer, ttl, count, first, last) VALUES (?, ?, ?, ?, ?, ?, ?)", (query, type, answer, ttl, count, n, n))
+        self.conn.execute(self._insert.values(query=query, type=type, answer=answer, ttl=ttl, count=count, first=n, last=n))
 
     def begin(self):
-        self.c.execute("begin");
+        self._trans = self.conn.begin()
 
     def commit(self):
-        self.conn.commit()
+        self._trans.commit()
 
     def search(self, q):
-        c = self.c
-        c.execute("select * from dns where answer=? or query=?", (q,q))
-        records = c.fetchall()
+        d = dns_table.c
+        records = self.engine.execute(
+            self._select.where((d.query == q) | (d.answer == q))
+        ).fetchall()
         if records:
             return records
 
         q = '%' + q + '%'
-        c.execute("select * from dns where answer LIKE ? or query LIKE ?", (q,q))
-        records = c.fetchall()
+        records = self.engine.execute(
+            self._select.where(d.query.like(q) | d.answer.like(q))
+        ).fetchall()
         return records
 
 
 def aggregate_file(f):
-
     pairs = defaultdict(int)
     ttls = {}
     times = {}
@@ -120,29 +125,38 @@ def aggregate_file(f):
         }
 
 def process_fn(f):
-    store = SqliteStore()
+    store = SQLStore()
     store.begin()
 
-    for rec in aggregate_file(f):
+    for n, rec in enumerate(aggregate_file(f)):
         store.upsert_record(**rec)
 
     store.commit()
-    print "processed %d records" % len(pairs)
+    print "processed %d records" % n
 
 def process():
     f = sys.argv[2]
     process_fn(f)
 
-from bottle import route, run, template
-@route('/dns/<q>')
-def dns(q):
-    db = SqliteStore()
-    records = db.search(q)
-    records = map(dict, records)
+#web stuff
+from bottle import route, run, template, Bottle
+
+def fixup(record):
+    r = dict(record)
+    for x in 'first', 'last':
+        r[x] = str(r[x])
+    return r
+
+app = Bottle()
+@app.route('/dns/<q>')
+def dns_search(q):
+    records = app.db.search(q)
+    records = map(fixup, records)
     return { "records": records }
 
 def serve():
-    run(host='0.0.0.0', port=8081)
+    app.db = SQLStore()
+    app.run(host='0.0.0.0', port=8081)
 
 MAPPING = {
     "process": process,
@@ -150,5 +164,11 @@ MAPPING = {
 }
 
 if __name__ == "__main__":
-    action = sys.argv[0]
-    MAPPING[action]()
+    try :
+        action = sys.argv[1]
+        func = MAPPING[action]
+    except (IndexError, KeyError):
+        print "Usage: %s [process foo.log] | [serve]" % sys.argv[0]
+        sys.exit(1)
+
+    func()
