@@ -3,7 +3,7 @@ Usage
 
 in local.bro:
 
-    @load ./passive-dns.bro
+    @load ./passive-dns
     redef PDNS::tool = "/path/to/bro_pdns.py";
 
     #any URI supported by sqlalchemy 
