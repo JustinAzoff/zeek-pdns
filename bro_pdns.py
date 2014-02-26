@@ -76,6 +76,19 @@ class SqliteStore:
     def commit(self):
         self.conn.commit()
 
+    def search(self, q):
+        c = self.c
+        c.execute("select * from dns where answer=? or query=?", (q,q))
+        records = c.fetchall()
+        if records:
+            return records
+
+        q = '%' + q + '%'
+        c.execute("select * from dns where answer LIKE ? or query LIKE ?", (q,q))
+        records = c.fetchall()
+        return records
+
+
 def aggregate_file(f):
 
     pairs = defaultdict(int)
@@ -106,7 +119,7 @@ def aggregate_file(f):
             "count": count,
         }
 
-def process(f):
+def process_fn(f):
     store = SqliteStore()
     store.begin()
 
@@ -116,37 +129,11 @@ def process(f):
     store.commit()
     print "processed %d records" % len(pairs)
 
-def main():
-    f = sys.argv[1]
-    process(f)
-
-if __name__ == "__main__":
-    main()
-#!/usr/bin/env python
-import sqlite3
-
-class SqliteStore:
-    def __init__(self):
-        conn = sqlite3.connect("/bro/logs/dns.db")
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        self.conn = conn
-        self.c = conn.cursor()
-
-    def search(self, q):
-        c = self.c
-        c.execute("select * from dns where answer=? or query=?", (q,q))
-        records = c.fetchall()
-        if records:
-            return records
-
-        q = '%' + q + '%'
-        c.execute("select * from dns where answer LIKE ? or query LIKE ?", (q,q))
-        records = c.fetchall()
-        return records
+def process():
+    f = sys.argv[2]
+    process_fn(f)
 
 from bottle import route, run, template
-
 @route('/dns/<q>')
 def dns(q):
     db = SqliteStore()
@@ -154,5 +141,14 @@ def dns(q):
     records = map(dict, records)
     return { "records": records }
 
-if __name__ == "__main__":
+def serve():
     run(host='0.0.0.0', port=8081)
+
+MAPPING = {
+    "process": process,
+    "serve": serve,
+}
+
+if __name__ == "__main__":
+    action = sys.argv[0]
+    MAPPING[action]()
