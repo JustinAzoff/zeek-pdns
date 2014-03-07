@@ -94,9 +94,10 @@ class SQLStore:
         records = self.engine.execute(
             self._select.where((d.query == q) | (d.answer == q))
         ).fetchall()
-        if records:
-            return records
+        return records
 
+    def search_full(self, q):
+        d = dns_table.c
         q = '%' + q + '%'
         records = self.engine.execute(
             self._select.where(d.query.like(q) | d.answer.like(q))
@@ -159,6 +160,12 @@ app = Bottle()
 @app.route('/dns/<q>')
 def dns_search(q):
     records = app.db.search(q)
+    records = map(fixup, records)
+    return { "records": records }
+
+@app.route('/dns/full/<q>')
+def dns_search(q):
+    records = app.db.search_full(q)
     records = map(fixup, records)
     return { "records": records }
 
