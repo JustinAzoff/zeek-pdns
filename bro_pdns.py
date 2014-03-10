@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 from collections import defaultdict
+import glob
 import os
 import sys
 import datetime
+import time
 from sqlalchemy import create_engine
 
 from sqlalchemy import Table, Column, Integer, String, MetaData, DateTime
@@ -134,6 +136,17 @@ def aggregate_file(f):
             "count": count,
         }
 
+SIZE_TIMEOUT = 5
+def is_growing(f):
+    size = os.stat(f).st_size
+    time.sleep(0.1)
+    for x in range(SIZE_TIMEOUT):
+        time.sleep(1)
+        newsize = os.stat(f).st_size
+        if newsize != size:
+            return True
+    return False
+
 def process_fn(f):
     store = SQLStore()
     store.begin()
@@ -147,6 +160,18 @@ def process_fn(f):
 def process():
     f = sys.argv[2]
     process_fn(f)
+
+def watch():
+    pattern = sys.argv[2]
+    while True:
+        files = glob.glob(pattern)
+        not_growing = (f for f in files if not is_growing(f))
+        for fn in not_growing:
+            process_fn(fn)
+            os.unlink(fn)
+        if not files:
+            print 'here'
+            time.sleep(5)
 
 #api
 
@@ -175,6 +200,7 @@ def serve():
 
 MAPPING = {
     "process": process,
+    "watch": watch,
     "serve": serve,
 }
 
@@ -183,7 +209,7 @@ if __name__ == "__main__":
         action = sys.argv[1]
         func = MAPPING[action]
     except (IndexError, KeyError):
-        print "Usage: %s [process foo.log] | [serve]" % sys.argv[0]
+        print "Usage: %s [process foo.log] | [watch '/path/to/dns*.log'] | [serve]" % sys.argv[0]
         sys.exit(1)
 
     func()
