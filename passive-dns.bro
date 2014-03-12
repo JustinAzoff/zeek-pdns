@@ -36,12 +36,12 @@ event bro_init()
       {
         Log::add_filter(DNS::LOG, [
           $name="dns-passivedns",
-	  $path="dns-passivedns",
-	  $interv=log_interval,
+          $path="dns-passivedns",
+          $interv=log_interval,
           $postprocessor=Log::sftp_postprocessor]);
           Log::sftp_destinations[Log::WRITER_ASCII,"dns-passivedns"] = set([$user=upload_user,$host=upload_host,$path=upload_path]);
       }
-    else 
+    else
       {
         Log::add_filter(DNS::LOG, [
           $name="dns-passivedns",
@@ -50,5 +50,4 @@ event bro_init()
           $postprocessor=process_log
         ]);
       }
-	  
 }
