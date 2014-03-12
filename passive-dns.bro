@@ -8,12 +8,12 @@ export {
     const tool = "/bro/tools/bro_pdns.py" &redef;
     # define URI where DB lives
     const uri = "sqlite:////bro/logs/dns.db" &redef;
-    # true if you want logs scp'd to remote host for processing
-    # if you use scp you must set upload variables
-    const use_scp = T &redef;
+    # true if you want logs sftp'd to remote host for processing
+    # if you use sftp you must set upload variables
+    const use_sftp = F &redef;
     # upload or rotation interval
     const log_interval = 5min &redef;
-    # variables to use when processing remotely and scp is required
+    # variables to use when processing remotely and sftp is required
     const upload_user = "someuser" &redef;
     const upload_host = "some.host.edu" &redef;
     const upload_path = "path/forlogs" &redef;
@@ -32,7 +32,7 @@ function process_log(info: Log::RotationInfo) : bool
 
 event bro_init()
 {
-    if ( use_scp )
+    if ( use_sftp )
       {
         Log::add_filter(DNS::LOG, [
           $name="dns-passivedns",
