@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from collections import defaultdict
 import glob
+import json
 from multiprocessing.dummy import Pool as thread_pool
 import os
 import sys
@@ -25,34 +26,9 @@ dns_table = Table('dns', metadata,
 
 
 def reader(f):
-    line = ''
-    headers = {}
-    it = iter(f)
-    while not line.startswith("#types"):
-        line = next(it).rstrip()
-        k,v = line[1:].split(None, 1)
-        headers[k] = v
-
-    sep = headers['separator'].decode("string-escape")
-
-    for k,v in headers.items():
-        if sep in v:
-            headers[k] = v.split(sep)
-
-    headers['separator'] = sep
-    fields = headers['fields']
-    types = headers['types']
-    set_sep = headers['set_separator']
-
-    vectors = [field for field, type in zip(fields, types) if type.startswith("vector[")]
-
-    for row in it:
-        if row.startswith("#close"): break
-        parts = row.rstrip().split(sep)
-        rec = dict(zip(fields, parts))
-        for f in vectors:
-            rec[f] = rec[f].split(set_sep)
-        yield rec
+    loads = json.loads
+    for line in f:
+        yield loads(line)
 
 ts = datetime.datetime.fromtimestamp
 
@@ -116,14 +92,17 @@ def aggregate_file(f):
     ttls = {}
     times = {}
     for rec in reader(open(f)):
-        #print "process", rec['query'], rec['qtype_name'], rec['answers']
-        q = rec['ans_query'][0] #this is a vector right now..
-        t = rec['qtype_name']
-        for a, ttl in zip(rec['answers'], rec['TTLs']):
-            tup = (q,t,a)
-            pairs[tup] += 1
-            ttls[tup] = ttl
-            times[tup] = rec["ts"]
+        try :
+            q = rec['ans_query'][0] #this is a vector right now..
+            t = rec['qtype_name']
+            for a, ttl in zip(rec['answers'], rec['TTLs']):
+                tup = (q,t,a)
+                pairs[tup] += 1
+                ttls[tup] = ttl
+                times[tup] = rec["ts"]
+        except KeyError:
+            #something missing, nothing to do...
+            pass
 
 
     for tup, count in pairs.iteritems():

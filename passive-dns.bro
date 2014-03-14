@@ -25,7 +25,7 @@ export {
             ## The number of unique dns query/response pairs
             records:    count  &log;
             ## The stderr from the process
-            err:        vector of string &log;
+            err:        vector of string &log &optional;
     };
 }
 
@@ -41,7 +41,9 @@ function process_log(info: Log::RotationInfo) : bool
         if(res?$stdout) {
             l$records = to_count(res$stdout[0]);
         }
-        l$err     = res$stderr;
+        if(res?$stderr) {
+            l$err = res$stderr;
+        }
         Log::write(LOG, l);
     }
     return T;
@@ -53,6 +55,7 @@ event bro_init()
     if ( use_sftp )
       {
         Log::add_filter(DNS::LOG, [
+          $config=table(["use_json"] = "T"),
           $name="dns-passivedns",
           $path="dns-passivedns",
           $interv=log_interval,
@@ -63,6 +66,7 @@ event bro_init()
     else
       {
         Log::add_filter(DNS::LOG, [
+          $config=table(["use_json"] = "T"),
           $name="dns-passivedns",
           $path="dns-passivedns",
           $interv=log_interval,
