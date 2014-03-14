@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from collections import defaultdict
 import glob
-import json
 from multiprocessing.dummy import Pool as thread_pool
 import os
 import sys
@@ -9,11 +8,16 @@ import datetime
 import time
 from sqlalchemy import create_engine
 
+try:
+    import ujson as json
+except ImportError:
+    import json
+
 from sqlalchemy import Table, Column, Integer, String, MetaData, DateTime
-metadata = MetaData()
 #web
 from bottle import route, run, template, Bottle
 
+metadata = MetaData()
 dns_table = Table('dns', metadata,
     Column('query', String, primary_key=True, index=True),
     Column('type', String, primary_key=True),
@@ -27,8 +31,7 @@ dns_table = Table('dns', metadata,
 
 def reader(f):
     loads = json.loads
-    for line in f:
-        yield loads(line)
+    return map(loads, f)
 
 ts = datetime.datetime.fromtimestamp
 
