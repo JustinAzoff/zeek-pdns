@@ -17,6 +17,16 @@ export {
     const upload_user = "someuser" &redef;
     const upload_host = "some.host.edu" &redef;
     const upload_path = "path/forlogs" &redef;
+
+    redef enum Log::ID += { LOG };
+    type Info: record {
+            ## Timestamp when the log line was finished and written.
+            ts:         time   &log;
+            ## The number of unique dns query/response pairs
+            records:    count  &log;
+            ## The stderr from the process
+            err:        vector of string &log;
+    };
 }
 
 # process DNS logs
@@ -25,21 +35,30 @@ function process_log(info: Log::RotationInfo) : bool
 
     local cmd = fmt("BRO_PDNS_DB=%s %s process %s && rm %s", uri, tool, info$fname, info$fname);
     when (local res = Exec::run([$cmd=cmd])) {
-        ## do nothing
+        local l: Info;
+        l$ts      = network_time();
+        l$records = 0;
+        if(res?$stdout) {
+            l$records = to_count(res$stdout[0]);
+        }
+        l$err     = res$stderr;
+        Log::write(LOG, l);
     }
     return T;
 }
 
 event bro_init()
 {
+    Log::create_stream(LOG, [$columns=Info]);
     if ( use_sftp )
       {
         Log::add_filter(DNS::LOG, [
           $name="dns-passivedns",
           $path="dns-passivedns",
           $interv=log_interval,
-          $postprocessor=Log::sftp_postprocessor]);
-          Log::sftp_destinations[Log::WRITER_ASCII,"dns-passivedns"] = set([$user=upload_user,$host=upload_host,$path=upload_path]);
+          $postprocessor=Log::sftp_postprocessor
+        ]);
+        Log::sftp_destinations[Log::WRITER_ASCII,"dns-passivedns"] = set([$user=upload_user,$host=upload_host,$path=upload_path]);
       }
     else
       {

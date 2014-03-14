@@ -152,15 +152,10 @@ def is_growing(f):
     return False
 
 def window(i,slice=5):
-    a=[]
-    for x in i:
-        if len(a) >= slice :
-            yield a
-            a=[]
-        a.append(x)
-
-    if a:
-        yield a
+    for x in xrange(0,len(i),slice):
+        a=x
+        b=x+slice
+        yield i[a:b]
 
 def load_records(records):
     store = SQLStore()
@@ -176,14 +171,14 @@ def process_fn(f):
     thread_count = int(os.getenv("BRO_PDNS_THREADS", "1"))
     processed = 0
 
-    aggregated = aggregate_file(f)
+    aggregated = list(aggregate_file(f))
+    batches = window(aggregated, 10000)
 
     pool = thread_pool(thread_count)
-    batches = window(aggregated, 10000)
 
     processed = sum(pool.imap(load_records, batches, chunksize=1))
 
-    print "processed %d records" % processed
+    print "%d" % processed
 
 def process():
     f = sys.argv[2]
