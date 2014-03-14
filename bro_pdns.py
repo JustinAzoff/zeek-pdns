@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from collections import defaultdict
 import glob
+from multiprocessing.dummy import Pool as thread_pool
 import os
 import sys
 import datetime
@@ -70,6 +71,9 @@ class SQLStore:
         self._select = dns_table.select()
         self._insert = dns_table.insert()
         self._update = dns_table.update()
+
+    def close(self):
+        self.conn.close()
 
     def upsert_record(self, query, type, answer, ttl, time,count):
         d = dns_table.c
@@ -147,15 +151,34 @@ def is_growing(f):
             return True
     return False
 
-def process_fn(f):
+def window(i,slice=5):
+    for x in xrange(0,len(i),slice):
+        a=x
+        b=x+slice
+        yield i[a:b]
+
+def load_records(records):
     store = SQLStore()
     store.begin()
 
-    for n, rec in enumerate(aggregate_file(f)):
+    for rec in records:
         store.upsert_record(**rec)
-
     store.commit()
-    print "processed %d records" % n
+    store.close()
+    return len(records)
+
+def process_fn(f):
+    thread_count = int(os.getenv("BRO_PDNS_THREADS", "1"))
+    processed = 0
+
+    aggregated = list(aggregate_file(f))
+    batches = window(aggregated, 10000)
+
+    pool = thread_pool(thread_count)
+
+    processed = sum(pool.imap(load_records, batches, chunksize=1))
+
+    print "%d" % processed
 
 def process():
     f = sys.argv[2]
