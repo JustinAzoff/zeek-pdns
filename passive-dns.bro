@@ -25,7 +25,7 @@ export {
             ## The number of unique dns query/response pairs
             records:    count  &log;
             ## The stderr from the process
-            err:        vector of string &log;
+            err:        vector of string &log &optional;
     };
 }
 
@@ -41,7 +41,9 @@ function process_log(info: Log::RotationInfo) : bool
         if(res?$stdout) {
             l$records = to_count(res$stdout[0]);
         }
-        l$err     = res$stderr;
+        if(res?$stderr) {
+            l$err = res$stderr;
+        }
         Log::write(LOG, l);
     }
     return T;
