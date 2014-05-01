@@ -5,7 +5,7 @@ module PDNS;
 
 export {
     # path to bro_pdns.py script.  only matters if you process locally
-    const tool = "/bro/tools/bro_pdns.py" &redef;
+    const tool = fmt("%s/bro_pdns.py", @DIR);
     # define URI where DB lives
     const uri = "sqlite:////bro/logs/dns.db" &redef;
     # true if you want logs sftp'd to remote host for processing
