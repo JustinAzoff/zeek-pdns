@@ -193,7 +193,6 @@ def watch():
             process_fn(fn)
             os.unlink(fn)
         if not files:
-            print 'here'
             time.sleep(5)
 
 #api
