@@ -3,7 +3,7 @@ Passive DNS for Bro
 
 This is an extremely simple implementation of a passive dns collection system that utilizes Bro for the DNS log collection.
 
-Passive DNS collection can be used for various security or troubleshooting related purposes.  Likely many things that you would currently search the raw DNS logs for, you could do faster by using the aggregated data in the passive DNS database.
+Passive DNS collection can be used for various security or troubleshooting related purposes.  Many things that you would currently search the raw DNS logs for can be done faster by using the aggregated data in the passive DNS database.
 
 This tool uses the Bro DNS logs to build a database of unique query+type+answer tuples.  This database is much more compact than the raw DNS logs, and querying it is much faster.
 
