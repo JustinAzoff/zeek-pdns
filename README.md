@@ -1,6 +1,16 @@
 Passive DNS for Bro
 ===================
 
+This is an extremely simple implementation of a passive dns collection system that utilizes Bro for the DNS log collection.  It produces a table like this:
+
+    pdns=# select * from dns where answer='74.125.225.18' order by last desc limit 4;
+          query       | type |    answer     | count | ttl |     first     |    last
+    ------------------+------+---------------+-------+-----+---------------+------------
+     www.google.com   | A    | 74.125.225.18 |  7517 | 198 | 2014-09-03 .. | 2014-10-30 ..
+     t0.gstatic.com   | A    | 74.125.225.18 |   266 | 300 | 2014-09-03 .. | 2014-10-30 ..
+     googlegroups.com | A    | 74.125.225.18 |   266 | 300 | 2014-09-03 .. | 2014-10-30 ..
+     t3.gstatic.com   | A    | 74.125.225.18 |   291 | 300 | 2014-09-03 .. | 2014-10-30 ..
+
 Requirements
 ------------
 
