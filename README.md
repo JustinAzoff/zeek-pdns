@@ -1,11 +1,17 @@
 Passive DNS for Bro
 ===================
 
-This is an extremely simple implementation of a passive dns collection system that utilizes Bro for the DNS log collection.
+This is an extremely simple implementation of a passive dns collection system
+that utilizes Bro for the DNS log collection.
 
-Passive DNS collection can be used for various security or troubleshooting related purposes.  Many things that you would currently search the raw DNS logs for can be done faster by using the aggregated data in the passive DNS database.
+Passive DNS collection can be used for various security or troubleshooting
+related purposes.  Many things that you would currently search the raw DNS logs
+for can be done faster by using the aggregated data in the passive DNS
+database.
 
-This tool uses the Bro DNS logs to build a database of unique query+type+answer tuples.  This database is much more compact than the raw DNS logs, and querying it is much faster.
+This tool uses the Bro DNS logs to build a database of unique query+type+answer
+tuples.  This database is much more compact than the raw DNS logs, and querying
+it is much faster.
 
 It produces a table like this:
 
@@ -35,6 +41,7 @@ in local.bro:
 
     #any URI supported by sqlalchemy 
     #see http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html
+    # i.e. redef PDNS::uri = "postgres://pdns:password@dbhost/pdns";
     redef PDNS::uri = "sqlite:////tmp/dns.db";
 
 to run the http api server:
