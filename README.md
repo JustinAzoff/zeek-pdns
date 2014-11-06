@@ -23,6 +23,14 @@ It produces a table like this:
      googlegroups.com | A    | 74.125.225.18 |   266 | 300 | 2014-09-03 .. | 2014-10-30 ..
      t3.gstatic.com   | A    | 74.125.225.18 |   291 | 300 | 2014-09-03 .. | 2014-10-30 ..
 
+This is helpful because the PTR record itself for 74.125.225.18 is ord08s12-in-f18.1e100.net.
+
+Some examples of questions this database can answer faster than using raw logs:
+
+ * Did anything ever resolve example.com, and if so, when was the first time?
+ * What IPs has example.com resolved to?
+ * What other names resolve to this IP?
+
 Requirements
 ------------
 
