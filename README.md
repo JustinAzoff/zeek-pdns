@@ -1,17 +1,15 @@
 Passive DNS for Bro
 ===================
 
-This is an extremely simple implementation of a passive dns collection system
-that utilizes Bro for the DNS log collection.
+This is an extremely simple implementation of a passive DNS collection system
+that utilizes Bro for DNS log collection.
 
 Passive DNS collection can be used for various security or troubleshooting
-related purposes.  Many things that you would currently search the raw DNS logs
-for can be done faster by using the aggregated data in the passive DNS
-database.
+purposes.  Many queries to raw DNS logs can be done faster by using 
+the aggregated data in the passive DNS database, which is more compact.
 
 This tool uses the Bro DNS logs to build a database of unique query+type+answer
-tuples.  This database is much more compact than the raw DNS logs, and querying
-it is much faster.
+tuples.
 
 It produces a table like this:
 
@@ -25,7 +23,7 @@ It produces a table like this:
 
 This is helpful because the PTR record itself for 74.125.225.18 is ord08s12-in-f18.1e100.net.
 
-Some examples of questions this database can answer faster than using raw logs:
+Examples of questions this database can answer faster than the raw logs:
 
  * Did anything ever resolve example.com, and if so, when was the first time?
  * What IPs has example.com resolved to?
@@ -36,14 +34,14 @@ Requirements
 
 * Bro 2.x
 * Python >= 2.6
-  * bottle
-  * sqlalchemy
-* A sql database supported by sqlalchemy.  SQLite works, but not recommended.
+  * Bottle
+  * SQLAlchemy
+* An SQL database supported by SQLAlchemy.  SQLite works, but is not recommended.
 
 Usage
 -----
 
-in local.bro:
+In local.bro:
 
     @load ./passive-dns
 
@@ -52,7 +50,7 @@ in local.bro:
     # i.e. redef PDNS::uri = "postgres://pdns:password@dbhost/pdns";
     redef PDNS::uri = "sqlite:////tmp/dns.db";
 
-to run the http api server:
+To run the http api server:
 
     $ BRO_PDNS_DB=sqlite:////tmp/dns.db /path/to/bro_pdns.py serve
 
