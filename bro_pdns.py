@@ -161,7 +161,7 @@ def load_records(records):
     store = SQLStore()
     store.begin()
 
-    for rec in records:
+    for rec in sorted(records):
         store.upsert_record(**rec)
     store.commit()
     store.close()
