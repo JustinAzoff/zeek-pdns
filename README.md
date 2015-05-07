@@ -43,7 +43,7 @@ Usage
 
 In local.bro:
 
-    @load ./passive-dns
+    @load ./bro-pdns
 
     #any URI supported by sqlalchemy 
     #see http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html
