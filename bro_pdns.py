@@ -14,9 +14,9 @@ metadata = MetaData()
 from bottle import route, run, template, Bottle
 
 dns_table = Table('dns', metadata,
-    Column('query', String, primary_key=True, index=True),
-    Column('type', String, primary_key=True),
-    Column('answer', String, primary_key=True, index=True),
+    Column('query', String(255), primary_key=True, index=True),
+    Column('type', String(16), primary_key=True),
+    Column('answer', String(255), primary_key=True, index=True),
     Column('count', Integer),
     Column('ttl', Integer),
     Column('first', DateTime),
