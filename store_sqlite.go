@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -72,6 +73,7 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 	}
 	defer insert_individual.Close()
 
+	var inserts, updates uint64
 	for _, q := range records {
 		//fmt.Printf("%-8d %-30s %-4s %-30s %s %s %s\n", q.count, q.query, q.qtype, q.answer, q.ttl, q.first, q.last)
 		//Update the tuples table
@@ -88,6 +90,9 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 			if err != nil {
 				return err
 			}
+			inserts++
+		} else {
+			updates++
 		}
 		//Update the invidual table for each of query and answer
 		for _, value := range []string{q.query, q.answer} {
@@ -104,9 +109,12 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 				if err != nil {
 					return err
 				}
+				inserts++
+			} else {
+				updates++
 			}
 		}
-
 	}
+	log.Printf("Inserts=%d Updates=%d", inserts, updates)
 	return tx.Commit()
 }
