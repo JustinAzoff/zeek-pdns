@@ -17,3 +17,5 @@ pip-log.txt
 # Unit test / coverage reports
 .coverage
 .tox
+bro-pdns
+bro-pdns_linux_amd64
