@@ -9,20 +9,28 @@ import (
 
 const schema = `
 CREATE TABLE IF NOT EXISTS tuples (
-	query character varying NOT NULL,
-	type character varying NOT NULL,
-	answer character varying NOT NULL,
+	query character varying,
+	type character varying,
+	answer character varying,
 	count integer,
 	ttl integer,
 	first integer,
-	last integer
-);
+	last integer,
+	PRIMARY KEY (query, type, answer)
+) ;
+CREATE INDEX IF NOT EXISTS tuples_query ON tuples(query);
+CREATE INDEX IF NOT EXISTS tuples_answer ON tuples(answer);
+CREATE INDEX IF NOT EXISTS tuples_first ON tuples(first);
+CREATE INDEX IF NOT EXISTS tuples_last ON tuples(last);
+
 CREATE TABLE IF NOT EXISTS individual (
-	value character varying NOT NULL,
+	value character varying PRIMARY KEY UNIQUE NOT NULL,
 	count integer,
 	first integer,
 	last integer
 );
+CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
+CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
 `
 
 type SQLiteStore struct {
