@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/JustinAzoff/flow-indexer/backend"
@@ -240,16 +239,4 @@ func aggregate(fn string) ([]aggregationResult, error) {
 	}
 
 	return aggregated, nil
-}
-
-func main() {
-	fn := os.Args[1]
-	aggregated, err := aggregate(fn)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, q := range aggregated {
-		fmt.Printf("%-8d %-30s %-4s %-30s %s %s %s\n", q.count, q.query, q.qtype, q.answer, q.ttl, q.first, q.last)
-	}
-
 }
