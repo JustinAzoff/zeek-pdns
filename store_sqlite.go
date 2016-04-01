@@ -59,7 +59,7 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 	if err != nil {
 		return err
 	}
-	update_tuples, err := tx.Prepare(`UPDATE tuples SET count=?, ttl=?, last=? WHERE query=? AND type=? AND answer=?`)
+	update_tuples, err := tx.Prepare(`UPDATE tuples SET count=count+?, ttl=?, last=? WHERE query=? AND type=? AND answer=?`)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 	}
 	defer insert_tuples.Close()
 
-	update_individual, err := tx.Prepare(`UPDATE individual SET count=?, last=? WHERE value=?`)
+	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=? WHERE value=?`)
 	if err != nil {
 		return err
 	}
