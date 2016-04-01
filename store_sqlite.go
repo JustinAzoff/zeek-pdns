@@ -93,7 +93,7 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 			return err
 		}
 		if rows == 0 {
-			_, err := insert_tuples.Exec(q.query, q.qtype, q.answer, q.count, q.ttl, q.first, q.last)
+			_, err := insert_tuples.Exec(q.query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
 			if err != nil {
 				return err
 			}
