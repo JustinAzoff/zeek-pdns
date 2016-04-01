@@ -54,7 +54,7 @@ func (s *SQLiteStore) Init() error {
 	return err
 }
 
-func (s *SQLiteStore) Update(records []aggregationResult) error {
+func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAggregationResult) error {
 	tx, err := s.conn.Begin()
 	if err != nil {
 		return err
@@ -83,7 +83,6 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 
 	var inserts, updates uint64
 	for _, q := range records {
-		//fmt.Printf("%-8d %-30s %-4s %-30s %s %s %s\n", q.count, q.query, q.qtype, q.answer, q.ttl, q.first, q.last)
 		//Update the tuples table
 		res, err := update_tuples.Exec(q.count, q.ttl, q.last, q.query, q.qtype, q.answer)
 		if err != nil {
@@ -102,25 +101,24 @@ func (s *SQLiteStore) Update(records []aggregationResult) error {
 		} else {
 			updates++
 		}
-		//Update the invidual table for each of query and answer
-		for _, value := range []string{q.query, q.answer} {
-			res, err := update_individual.Exec(q.count, q.last, value)
+	}
+	for _, q := range valueRecords {
+		res, err := update_individual.Exec(q.count, q.last, q.value)
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			_, err := insert_individual.Exec(q.value, q.count, q.first, q.last)
 			if err != nil {
 				return err
 			}
-			rows, err := res.RowsAffected()
-			if err != nil {
-				return err
-			}
-			if rows == 0 {
-				_, err := insert_individual.Exec(value, q.count, q.first, q.last)
-				if err != nil {
-					return err
-				}
-				inserts++
-			} else {
-				updates++
-			}
+			inserts++
+		} else {
+			updates++
 		}
 	}
 	log.Printf("Inserts=%d Updates=%d", inserts, updates)

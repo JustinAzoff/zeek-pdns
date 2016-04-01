@@ -3,7 +3,7 @@ package main
 import "errors"
 
 type Store interface {
-	Update([]aggregationResult) error
+	Update([]aggregationResult, []valueAggregationResult) error
 	Init() error
 	Close() error
 }

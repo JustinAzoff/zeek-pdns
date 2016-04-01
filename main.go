@@ -7,7 +7,7 @@ import (
 
 func main() {
 	fn := os.Args[1]
-	aggregated, err := aggregate(fn)
+	aggregated, av, err := aggregate(fn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = mystore.Update(aggregated)
+	err = mystore.Update(aggregated, av)
 	if err != nil {
 		log.Fatal(err)
 	}

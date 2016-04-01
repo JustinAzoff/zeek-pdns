@@ -160,15 +160,21 @@ type aggregationResult struct {
 	uniqueQuery
 	queryStat
 }
+type valueAggregationResult struct {
+	value string
+	queryStat
+}
 
-func aggregate(fn string) ([]aggregationResult, error) {
+func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error) {
 	var aggregated []aggregationResult
+	var aggregatedValues []valueAggregationResult
 
 	queries := make(map[uniqueQuery]*queryStat)
+	values := make(map[string]*queryStat)
 
 	f, err := backend.OpenDecompress(fn)
 	if err != nil {
-		return aggregated, err
+		return aggregated, aggregatedValues, err
 	}
 	br := NewBroAsciiReader(f)
 
@@ -177,7 +183,7 @@ func aggregate(fn string) ([]aggregationResult, error) {
 	for {
 		rec, err := br.Next()
 		if err != nil {
-			return aggregated, err
+			return aggregated, aggregatedValues, err
 		}
 		if rec == nil {
 			break
@@ -191,7 +197,7 @@ func aggregate(fn string) ([]aggregationResult, error) {
 			ttl_field = rec.GetFieldIndex("TTLs")
 			br.HandledHeaders()
 			if rec.err != nil {
-				return aggregated, rec.err
+				return aggregated, aggregatedValues, rec.err
 			}
 		}
 
@@ -201,10 +207,23 @@ func aggregate(fn string) ([]aggregationResult, error) {
 		answers_raw := rec.GetStringByIndex(answers_field)
 		ttls_raw := rec.GetStringByIndex(ttl_field)
 		if rec.err != nil {
-			return aggregated, rec.err
+			return aggregated, aggregatedValues, rec.err
 		}
 		answers := strings.Split(answers_raw, ",")
 		ttls := strings.Split(ttls_raw, ",")
+
+		arec := values[query]
+		if arec == nil {
+			arec = &queryStat{
+				first: ts,
+				last:  ts,
+				count: 1,
+			}
+			values[query] = arec
+		} else {
+			arec.count++
+			arec.last = ts
+		}
 
 		for idx, answer := range answers {
 			ttl := stripDecimal(ttls[idx])
@@ -227,6 +246,21 @@ func aggregate(fn string) ([]aggregationResult, error) {
 				rec.last = ts
 				rec.ttl = ttl
 			}
+
+			arec := values[answer]
+			if arec == nil {
+				arec = &queryStat{
+					first: ts,
+					last:  ts,
+					ttl:   ttl,
+					count: 1,
+				}
+				values[answer] = arec
+			} else {
+				arec.count++
+				arec.last = ts
+				arec.ttl = ttl
+			}
 		}
 	}
 
@@ -237,6 +271,13 @@ func aggregate(fn string) ([]aggregationResult, error) {
 		}
 		aggregated = append(aggregated, agg)
 	}
+	for value, stat := range values {
+		agg := valueAggregationResult{
+			value:     value,
+			queryStat: *stat,
+		}
+		aggregatedValues = append(aggregatedValues, agg)
+	}
 
-	return aggregated, nil
+	return aggregated, aggregatedValues, nil
 }
