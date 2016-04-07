@@ -148,6 +148,10 @@ type uniqueQuery struct {
 	answer string
 	qtype  string
 }
+type uniqueValue struct {
+	value string
+	which string // "Q" or "A"
+}
 
 type queryStat struct {
 	count uint
@@ -161,7 +165,7 @@ type aggregationResult struct {
 	queryStat
 }
 type valueAggregationResult struct {
-	value string
+	uniqueValue
 	queryStat
 }
 
@@ -170,7 +174,7 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 	var aggregatedValues []valueAggregationResult
 
 	queries := make(map[uniqueQuery]*queryStat)
-	values := make(map[string]*queryStat)
+	values := make(map[uniqueValue]*queryStat)
 
 	f, err := backend.OpenDecompress(fn)
 	if err != nil {
@@ -212,14 +216,16 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 		answers := strings.Split(answers_raw, ",")
 		ttls := strings.Split(ttls_raw, ",")
 
-		arec := values[query]
+		query_value := uniqueValue{value: query, which: "Q"}
+
+		arec := values[query_value]
 		if arec == nil {
 			arec = &queryStat{
 				first: ts,
 				last:  ts,
 				count: 1,
 			}
-			values[query] = arec
+			values[query_value] = arec
 		} else {
 			arec.count++
 			arec.last = ts
@@ -247,7 +253,8 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 				rec.ttl = ttl
 			}
 
-			arec := values[answer]
+			answer_value := uniqueValue{value: answer, which: "A"}
+			arec := values[answer_value]
 			if arec == nil {
 				arec = &queryStat{
 					first: ts,
@@ -255,7 +262,7 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 					ttl:   ttl,
 					count: 1,
 				}
-				values[answer] = arec
+				values[answer_value] = arec
 			} else {
 				arec.count++
 				arec.last = ts
@@ -273,8 +280,8 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 	}
 	for value, stat := range values {
 		agg := valueAggregationResult{
-			value:     value,
-			queryStat: *stat,
+			uniqueValue: value,
+			queryStat:   *stat,
 		}
 		aggregatedValues = append(aggregatedValues, agg)
 	}

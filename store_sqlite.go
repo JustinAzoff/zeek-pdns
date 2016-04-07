@@ -25,10 +25,12 @@ CREATE INDEX IF NOT EXISTS tuples_first ON tuples(first);
 CREATE INDEX IF NOT EXISTS tuples_last ON tuples(last);
 
 CREATE TABLE IF NOT EXISTS individual (
-	value character varying PRIMARY KEY UNIQUE NOT NULL,
+	which char(1),
+	value character varying,
 	count integer,
 	first REAL,
-	last REAL
+	last REAL,
+	PRIMARY KEY (which, value)
 );
 CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
 CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
@@ -86,13 +88,13 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 	}
 	defer insert_tuples.Close()
 
-	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=datetime(?, 'unixepoch') WHERE value=?`)
+	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=datetime(?, 'unixepoch') WHERE value=? AND which=?`)
 	if err != nil {
 		return err
 	}
 	defer update_individual.Close()
-	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, count, first, last)
-	    VALUES (?, ?, datetime(?, 'unixepoch'), datetime(?,'unixepoch'))`)
+	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, which, count, first, last)
+	    VALUES (?, ?, ?, datetime(?, 'unixepoch'), datetime(?,'unixepoch'))`)
 	if err != nil {
 		return err
 	}
@@ -120,7 +122,7 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 		}
 	}
 	for _, q := range valueRecords {
-		res, err := update_individual.Exec(q.count, q.last, q.value)
+		res, err := update_individual.Exec(q.count, q.last, q.value, q.which)
 		if err != nil {
 			return err
 		}
@@ -129,7 +131,7 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 			return err
 		}
 		if rows == 0 {
-			_, err := insert_individual.Exec(q.value, q.count, q.first, q.last)
+			_, err := insert_individual.Exec(q.value, q.which, q.count, q.first, q.last)
 			if err != nil {
 				return err
 			}
