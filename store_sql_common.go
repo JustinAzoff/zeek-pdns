@@ -19,6 +19,13 @@ type tupleResult struct {
 	First  string
 	Last   string
 }
+type individualResult struct {
+	Value string
+	Which string
+	Count uint
+	First string
+	Last  string
+}
 
 func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 	var fn string
@@ -46,5 +53,10 @@ func (s *SQLCommonStore) FindQueryTuples(query string) ([]tupleResult, error) {
 func (s *SQLCommonStore) FindTuples(query string) ([]tupleResult, error) {
 	tr := []tupleResult{}
 	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? OR answer = ?", query, query)
+	return tr, err
+}
+func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error) {
+	tr := []individualResult{}
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value = ?", value)
 	return tr, err
 }

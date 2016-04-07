@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	recs, err := mystore.FindTuples("198.41.209.138")
+	recs, err := mystore.FindIndividual("www.reddit.com")
 	if err != nil {
 		log.Fatal(err)
 	}

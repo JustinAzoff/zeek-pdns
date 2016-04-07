@@ -9,6 +9,7 @@ type Store interface {
 	Update([]aggregationResult, []valueAggregationResult) error
 	FindQueryTuples(query string) ([]tupleResult, error)
 	FindTuples(query string) ([]tupleResult, error)
+	FindIndividual(value string) ([]individualResult, error)
 	Close() error
 }
 
