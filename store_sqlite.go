@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS tuples (
 	answer character varying,
 	count integer,
 	ttl integer,
-	first integer,
-	last integer,
+	first REAL,
+	last REAL,
 	PRIMARY KEY (query, type, answer)
 ) ;
 CREATE INDEX IF NOT EXISTS tuples_query ON tuples(query);
@@ -27,8 +27,8 @@ CREATE INDEX IF NOT EXISTS tuples_last ON tuples(last);
 CREATE TABLE IF NOT EXISTS individual (
 	value character varying PRIMARY KEY UNIQUE NOT NULL,
 	count integer,
-	first integer,
-	last integer
+	first REAL,
+	last REAL
 );
 CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
 CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
@@ -74,23 +74,25 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 	if err != nil {
 		return err
 	}
-	update_tuples, err := tx.Prepare(`UPDATE tuples SET count=count+?, ttl=?, last=? WHERE query=? AND type=? AND answer=?`)
+	update_tuples, err := tx.Prepare(`UPDATE tuples SET count=count+?, ttl=?, last=datetime(?, 'unixepoch') WHERE query=? AND type=? AND answer=?`)
 	if err != nil {
 		return err
 	}
 	defer update_tuples.Close()
-	insert_tuples, err := tx.Prepare(`INSERT INTO tuples (query, type, answer, ttl, count, first, last) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+	insert_tuples, err := tx.Prepare(`INSERT INTO tuples (query, type, answer, ttl, count, first, last)
+	    VALUES (?, ?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?,'unixepoch'))`)
 	if err != nil {
 		return err
 	}
 	defer insert_tuples.Close()
 
-	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=? WHERE value=?`)
+	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=datetime(?, 'unixepoch') WHERE value=?`)
 	if err != nil {
 		return err
 	}
 	defer update_individual.Close()
-	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, count, first, last) VALUES (?, ?, ?, ?)`)
+	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, count, first, last)
+	    VALUES (?, ?, datetime(?, 'unixepoch'), datetime(?,'unixepoch'))`)
 	if err != nil {
 		return err
 	}
