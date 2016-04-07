@@ -45,6 +45,6 @@ func (s *SQLCommonStore) FindQueryTuples(query string) ([]tupleResult, error) {
 }
 func (s *SQLCommonStore) FindTuples(query string) ([]tupleResult, error) {
 	tr := []tupleResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? || answer = ?", query, query)
+	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? OR answer = ?", query, query)
 	return tr, err
 }
