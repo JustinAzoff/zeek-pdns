@@ -7,10 +7,6 @@ import (
 
 func main() {
 	fn := os.Args[1]
-	aggregated, av, err := aggregate(fn)
-	if err != nil {
-		log.Fatal(err)
-	}
 	//for _, q := range aggregated {
 	//	fmt.Printf("%-8d %-30s %-4s %-30s %s %s %s\n", q.count, q.query, q.qtype, q.answer, q.ttl, q.first, q.last)
 	//}
@@ -18,7 +14,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	indexed, err := mystore.IsLogIndexed(fn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if indexed {
+		log.Printf("Already indexed: %s", fn)
+		return
+	}
+
+	aggregated, av, err := aggregate(fn)
+	if err != nil {
+		log.Fatal(err)
+	}
 	err = mystore.Update(aggregated, av)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = mystore.SetLogIndexed(fn)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	"log"
+
+	"github.com/jmoiron/sqlx"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -31,18 +32,25 @@ CREATE TABLE IF NOT EXISTS individual (
 );
 CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
 CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
+
+CREATE TABLE IF NOT EXISTS filenames (
+	filename character varying PRIMARY KEY UNIQUE NOT NULL,
+	time REAL DEFAULT (datetime('now', 'localtime'))
+);
 `
 
 type SQLiteStore struct {
-	conn *sql.DB
+	conn   *sqlx.DB
+	common *SQLCommonStore
 }
 
 func NewSQLiteStore(uri string) (Store, error) {
-	conn, err := sql.Open("sqlite3", uri)
+	conn, err := sqlx.Open("sqlite3", uri)
 	if err != nil {
 		return nil, err
 	}
-	return &SQLiteStore{conn: conn}, nil
+	common := &SQLCommonStore{conn: conn}
+	return &SQLiteStore{conn: conn, common: common}, nil
 }
 
 func (s *SQLiteStore) Close() error {
@@ -52,6 +60,13 @@ func (s *SQLiteStore) Close() error {
 func (s *SQLiteStore) Init() error {
 	_, err := s.conn.Exec(schema)
 	return err
+}
+
+func (s *SQLiteStore) IsLogIndexed(filename string) (bool, error) {
+	return s.common.IsLogIndexed(filename)
+}
+func (s *SQLiteStore) SetLogIndexed(filename string) error {
+	return s.common.SetLogIndexed(filename)
 }
 
 func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAggregationResult) error {

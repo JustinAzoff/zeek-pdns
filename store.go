@@ -3,8 +3,10 @@ package main
 import "errors"
 
 type Store interface {
-	Update([]aggregationResult, []valueAggregationResult) error
 	Init() error
+	IsLogIndexed(filename string) (bool, error)
+	SetLogIndexed(filename string) error
+	Update([]aggregationResult, []valueAggregationResult) error
 	Close() error
 }
 
