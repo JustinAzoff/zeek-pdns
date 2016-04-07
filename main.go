@@ -36,4 +36,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	recs, err := mystore.FindQueryTuples("www.reddit.com")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("%#v", recs)
 }

@@ -7,6 +7,8 @@ type Store interface {
 	IsLogIndexed(filename string) (bool, error)
 	SetLogIndexed(filename string) error
 	Update([]aggregationResult, []valueAggregationResult) error
+	FindQueryTuples(query string) ([]tupleResult, error)
+	FindTuples(query string) ([]tupleResult, error)
 	Close() error
 }
 

@@ -42,8 +42,8 @@ CREATE TABLE IF NOT EXISTS filenames (
 `
 
 type SQLiteStore struct {
-	conn   *sqlx.DB
-	common *SQLCommonStore
+	conn *sqlx.DB
+	*SQLCommonStore
 }
 
 func NewSQLiteStore(uri string) (Store, error) {
@@ -52,7 +52,7 @@ func NewSQLiteStore(uri string) (Store, error) {
 		return nil, err
 	}
 	common := &SQLCommonStore{conn: conn}
-	return &SQLiteStore{conn: conn, common: common}, nil
+	return &SQLiteStore{conn: conn, SQLCommonStore: common}, nil
 }
 
 func (s *SQLiteStore) Close() error {
@@ -62,13 +62,6 @@ func (s *SQLiteStore) Close() error {
 func (s *SQLiteStore) Init() error {
 	_, err := s.conn.Exec(schema)
 	return err
-}
-
-func (s *SQLiteStore) IsLogIndexed(filename string) (bool, error) {
-	return s.common.IsLogIndexed(filename)
-}
-func (s *SQLiteStore) SetLogIndexed(filename string) error {
-	return s.common.SetLogIndexed(filename)
 }
 
 func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAggregationResult) error {

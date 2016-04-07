@@ -26,6 +26,9 @@ func extract_sep(line string) string {
 }
 
 func stripDecimal(value string) string {
+	if value == "-" {
+		return "0"
+	}
 	idx := strings.Index(value, ".")
 	if idx == -1 {
 		return value
