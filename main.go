@@ -40,5 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%#v", recs)
+	for _, rec := range recs {
+		log.Printf("%#v", rec)
+	}
 }
