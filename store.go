@@ -1,18 +1,27 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 type Store interface {
 	Init() error
 	IsLogIndexed(filename string) (bool, error)
 	SetLogIndexed(filename string) error
-	Update([]aggregationResult, []valueAggregationResult) error
+	Update(aggregationResult) (UpdateResult, error)
 	FindQueryTuples(query string) ([]tupleResult, error)
 	FindTuples(query string) ([]tupleResult, error)
 	FindIndividual(value string) ([]individualResult, error)
 	LikeTuples(query string) ([]tupleResult, error)
 	LikeIndividual(value string) ([]individualResult, error)
 	Close() error
+}
+
+type UpdateResult struct {
+	Inserted uint
+	Updated  uint
+	Duration time.Duration
 }
 
 var storeFactories = map[string]func(string) (Store, error){

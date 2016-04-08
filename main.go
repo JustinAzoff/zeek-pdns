@@ -28,18 +28,21 @@ var IndexCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			if indexed {
-				log.Printf("Already indexed: %s", fn)
+				log.Printf("%s: Already indexed", fn)
 				continue
 			}
 
-			aggregated, av, err := aggregate(fn)
+			aggregated, err := aggregate(fn)
 			if err != nil {
 				log.Fatal(err)
 			}
-			err = mystore.Update(aggregated, av)
+			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d Tuples=%d Individual=%d", fn,
+				aggregated.Duration.Seconds(), aggregated.TotalRecords, len(aggregated.Tuples), len(aggregated.Individual))
+			result, err := mystore.Update(aggregated)
 			if err != nil {
 				log.Fatal(err)
 			}
+			log.Printf("%s: Store: Duration=%0.1f Inserted=%d Updated=%d", fn, result.Duration.Seconds(), result.Inserted, result.Updated)
 			err = mystore.SetLogIndexed(fn)
 			if err != nil {
 				log.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/JustinAzoff/flow-indexer/backend"
 )
@@ -146,12 +147,12 @@ func (b *BroAsciiReader) HandledHeaders() {
 	b.newHeaders = false
 }
 
-type uniqueQuery struct {
+type uniqueTuple struct {
 	query  string
 	answer string
 	qtype  string
 }
-type uniqueValue struct {
+type uniqueIndividual struct {
 	value string
 	which string // "Q" or "A"
 }
@@ -164,24 +165,31 @@ type queryStat struct {
 }
 
 type aggregationResult struct {
-	uniqueQuery
+	Duration     time.Duration
+	TotalRecords uint
+	Tuples       []aggregatedTuple
+	Individual   []aggregatedIndividual
+}
+
+type aggregatedTuple struct {
+	uniqueTuple
 	queryStat
 }
-type valueAggregationResult struct {
-	uniqueValue
+type aggregatedIndividual struct {
+	uniqueIndividual
 	queryStat
 }
 
-func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error) {
-	var aggregated []aggregationResult
-	var aggregatedValues []valueAggregationResult
+func aggregate(fn string) (aggregationResult, error) {
+	var result aggregationResult
+	start := time.Now()
 
-	queries := make(map[uniqueQuery]*queryStat)
-	values := make(map[uniqueValue]*queryStat)
+	queries := make(map[uniqueTuple]*queryStat)
+	values := make(map[uniqueIndividual]*queryStat)
 
 	f, err := backend.OpenDecompress(fn)
 	if err != nil {
-		return aggregated, aggregatedValues, err
+		return result, err
 	}
 	br := NewBroAsciiReader(f)
 
@@ -190,11 +198,12 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 	for {
 		rec, err := br.Next()
 		if err != nil {
-			return aggregated, aggregatedValues, err
+			return result, err
 		}
 		if rec == nil {
 			break
 		}
+		result.TotalRecords++
 
 		if br.HeadersChanged() {
 			ts_field = rec.GetFieldIndex("ts")
@@ -204,7 +213,7 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 			ttl_field = rec.GetFieldIndex("TTLs")
 			br.HandledHeaders()
 			if rec.err != nil {
-				return aggregated, aggregatedValues, rec.err
+				return result, rec.err
 			}
 		}
 
@@ -214,12 +223,12 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 		answers_raw := rec.GetStringByIndex(answers_field)
 		ttls_raw := rec.GetStringByIndex(ttl_field)
 		if rec.err != nil {
-			return aggregated, aggregatedValues, rec.err
+			return result, rec.err
 		}
 		answers := strings.Split(answers_raw, ",")
 		ttls := strings.Split(ttls_raw, ",")
 
-		query_value := uniqueValue{value: query, which: "Q"}
+		query_value := uniqueIndividual{value: query, which: "Q"}
 
 		arec := values[query_value]
 		if arec == nil {
@@ -236,7 +245,7 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 
 		for idx, answer := range answers {
 			ttl := stripDecimal(ttls[idx])
-			uquery := uniqueQuery{
+			uquery := uniqueTuple{
 				query:  query,
 				answer: answer,
 				qtype:  qtype_name,
@@ -256,7 +265,7 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 				rec.ttl = ttl
 			}
 
-			answer_value := uniqueValue{value: answer, which: "A"}
+			answer_value := uniqueIndividual{value: answer, which: "A"}
 			arec := values[answer_value]
 			if arec == nil {
 				arec = &queryStat{
@@ -275,19 +284,20 @@ func aggregate(fn string) ([]aggregationResult, []valueAggregationResult, error)
 	}
 
 	for q, stat := range queries {
-		agg := aggregationResult{
-			uniqueQuery: q,
+		agg := aggregatedTuple{
+			uniqueTuple: q,
 			queryStat:   *stat,
 		}
-		aggregated = append(aggregated, agg)
+		result.Tuples = append(result.Tuples, agg)
 	}
 	for value, stat := range values {
-		agg := valueAggregationResult{
-			uniqueValue: value,
-			queryStat:   *stat,
+		agg := aggregatedIndividual{
+			uniqueIndividual: value,
+			queryStat:        *stat,
 		}
-		aggregatedValues = append(aggregatedValues, agg)
+		result.Individual = append(result.Individual, agg)
 	}
 
-	return aggregated, aggregatedValues, nil
+	result.Duration = time.Since(start)
+	return result, nil
 }
