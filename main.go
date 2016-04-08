@@ -70,9 +70,7 @@ var FindTupleCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, rec := range recs {
-				fmt.Printf("%#v\n", rec)
-			}
+			recs.Display()
 		}
 	},
 }
@@ -91,9 +89,7 @@ var FindIndividualCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, rec := range recs {
-				fmt.Printf("%#v\n", rec)
-			}
+			recs.Display()
 		}
 	},
 }
@@ -116,9 +112,7 @@ var LikeTupleCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, rec := range recs {
-				fmt.Printf("%#v\n", rec)
-			}
+			recs.Display()
 		}
 	},
 }
@@ -137,9 +131,7 @@ var LikeIndividualCmd = &cobra.Command{
 			if err != nil {
 				log.Fatal(err)
 			}
-			for _, rec := range recs {
-				fmt.Printf("%#v\n", rec)
-			}
+			recs.Display()
 		}
 	},
 }

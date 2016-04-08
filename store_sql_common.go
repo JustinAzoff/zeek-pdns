@@ -18,23 +18,6 @@ type SQLCommonStore struct {
 	conn *sqlx.DB
 }
 
-type tupleResult struct {
-	Query  string
-	Type   string
-	Answer string
-	Count  uint
-	TTL    uint
-	First  string
-	Last   string
-}
-type individualResult struct {
-	Value string
-	Which string
-	Count uint
-	First string
-	Last  string
-}
-
 func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 	var fn string
 	err := s.conn.QueryRow("SELECT filename FROM filenames WHERE filename=?", filename).Scan(&fn)
@@ -53,13 +36,13 @@ func (s *SQLCommonStore) SetLogIndexed(filename string) error {
 	return err
 }
 
-func reverseQuery(tr []tupleResult) {
+func reverseQuery(tr tupleResults) {
 	for idx, rec := range tr {
 		rec.Query = Reverse(rec.Query)
 		tr[idx] = rec
 	}
 }
-func reverseValue(tr []individualResult) {
+func reverseValue(tr individualResults) {
 	for idx, rec := range tr {
 		if rec.Which == "Q" {
 			rec.Value = Reverse(rec.Value)
@@ -68,14 +51,14 @@ func reverseValue(tr []individualResult) {
 	}
 }
 
-func (s *SQLCommonStore) FindQueryTuples(query string) ([]tupleResult, error) {
+func (s *SQLCommonStore) FindQueryTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	query = Reverse(query)
 	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ?", query)
 	reverseQuery(tr)
 	return tr, err
 }
-func (s *SQLCommonStore) FindTuples(query string) ([]tupleResult, error) {
+func (s *SQLCommonStore) FindTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
 	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? OR answer = ?", rquery, query)
@@ -83,14 +66,14 @@ func (s *SQLCommonStore) FindTuples(query string) ([]tupleResult, error) {
 
 	return tr, err
 }
-func (s *SQLCommonStore) LikeTuples(query string) ([]tupleResult, error) {
+func (s *SQLCommonStore) LikeTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
 	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query like ? OR answer like ?", rquery+"%", query+"%")
 	reverseQuery(tr)
 	return tr, err
 }
-func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error) {
+func (s *SQLCommonStore) FindIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
 	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value = ?) OR (which='Q' AND value =?)", value, rvalue)
@@ -98,7 +81,7 @@ func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error
 	return tr, err
 }
 
-func (s *SQLCommonStore) LikeIndividual(value string) ([]individualResult, error) {
+func (s *SQLCommonStore) LikeIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
 	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?)", value+"%", rvalue+"%")
