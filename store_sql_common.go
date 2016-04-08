@@ -6,6 +6,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+func Reverse(s string) string {
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
 type SQLCommonStore struct {
 	conn *sqlx.DB
 }
@@ -45,18 +53,55 @@ func (s *SQLCommonStore) SetLogIndexed(filename string) error {
 	return err
 }
 
+func reverseQuery(tr []tupleResult) {
+	for idx, rec := range tr {
+		rec.Query = Reverse(rec.Query)
+		tr[idx] = rec
+	}
+}
+func reverseValue(tr []individualResult) {
+	for idx, rec := range tr {
+		if rec.Which == "Q" {
+			rec.Value = Reverse(rec.Value)
+			tr[idx] = rec
+		}
+	}
+}
+
 func (s *SQLCommonStore) FindQueryTuples(query string) ([]tupleResult, error) {
 	tr := []tupleResult{}
+	query = Reverse(query)
 	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ?", query)
+	reverseQuery(tr)
 	return tr, err
 }
 func (s *SQLCommonStore) FindTuples(query string) ([]tupleResult, error) {
 	tr := []tupleResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? OR answer = ?", query, query)
+	rquery := Reverse(query)
+	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = ? OR answer = ?", rquery, query)
+	reverseQuery(tr)
+
+	return tr, err
+}
+func (s *SQLCommonStore) LikeTuples(query string) ([]tupleResult, error) {
+	tr := []tupleResult{}
+	rquery := Reverse(query)
+	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query like ? OR answer like ?", rquery+"%", query+"%")
+	reverseQuery(tr)
 	return tr, err
 }
 func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error) {
+	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value = ?", value)
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value = ? OR value =?", value, rvalue)
+	reverseValue(tr)
+	return tr, err
+}
+
+func (s *SQLCommonStore) LikeIndividual(value string) ([]individualResult, error) {
+	rvalue := Reverse(value)
+	tr := []individualResult{}
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value like ? OR value like ?", value+"%", rvalue+"%")
+	reverseValue(tr)
 	return tr, err
 }

@@ -10,6 +10,8 @@ type Store interface {
 	FindQueryTuples(query string) ([]tupleResult, error)
 	FindTuples(query string) ([]tupleResult, error)
 	FindIndividual(value string) ([]individualResult, error)
+	LikeTuples(query string) ([]tupleResult, error)
+	LikeIndividual(value string) ([]individualResult, error)
 	Close() error
 }
 

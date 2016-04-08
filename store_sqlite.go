@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS filenames (
 	filename character varying PRIMARY KEY UNIQUE NOT NULL,
 	time REAL DEFAULT (datetime('now', 'localtime'))
 );
+PRAGMA case_sensitive_like=ON;
 `
 
 type SQLiteStore struct {
@@ -96,7 +97,8 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 	var inserts, updates uint64
 	for _, q := range records {
 		//Update the tuples table
-		res, err := update_tuples.Exec(q.count, q.ttl, q.last, q.query, q.qtype, q.answer)
+		query := Reverse(q.query)
+		res, err := update_tuples.Exec(q.count, q.ttl, q.last, query, q.qtype, q.answer)
 		if err != nil {
 			return err
 		}
@@ -105,7 +107,7 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 			return err
 		}
 		if rows == 0 {
-			_, err := insert_tuples.Exec(q.query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+			_, err := insert_tuples.Exec(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
 			if err != nil {
 				return err
 			}
@@ -115,7 +117,11 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 		}
 	}
 	for _, q := range valueRecords {
-		res, err := update_individual.Exec(q.count, q.last, q.value, q.which)
+		value := q.value
+		if q.which == "Q" {
+			value = Reverse(value)
+		}
+		res, err := update_individual.Exec(q.count, q.last, value, q.which)
 		if err != nil {
 			return err
 		}
@@ -124,7 +130,7 @@ func (s *SQLiteStore) Update(records []aggregationResult, valueRecords []valueAg
 			return err
 		}
 		if rows == 0 {
-			_, err := insert_individual.Exec(q.value, q.which, q.count, q.first, q.last)
+			_, err := insert_individual.Exec(value, q.which, q.count, q.first, q.last)
 			if err != nil {
 				return err
 			}
