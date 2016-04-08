@@ -93,7 +93,7 @@ func (s *SQLCommonStore) LikeTuples(query string) ([]tupleResult, error) {
 func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value = ? OR value =?", value, rvalue)
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value = ?) OR (which='Q' AND value =?)", value, rvalue)
 	reverseValue(tr)
 	return tr, err
 }
@@ -101,7 +101,7 @@ func (s *SQLCommonStore) FindIndividual(value string) ([]individualResult, error
 func (s *SQLCommonStore) LikeIndividual(value string) ([]individualResult, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE value like ? OR value like ?", value+"%", rvalue+"%")
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?)", value+"%", rvalue+"%")
 	reverseValue(tr)
 	return tr, err
 }
