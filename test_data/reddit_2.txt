@@ -1,0 +1,9 @@
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	dns
+#open	2016-04-01-00-00-40
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	proto	trans_id	query	qclass	qclass_name	qtype	qtype_name	rcode	rcode_name	AA	TC	RD	RA	Z	answers	TTLs	rejected	cc
+#types	time	string	addr	port	addr	port	enum	count	string	count	string	count	string	count	string	bool	bool	bool	bool	count	vector[string]	vector[interval]	bool	string
+1459547704.609809	CSJeQh1Uu4zoeDAkTa	192.168.1.1	54496	173.245.58.24	53	udp	45516	www.reddit.com	1	C_INTERNET	1	A	0	NOERROR	T	F	F	F	0	198.41.208.138,198.41.208.142,198.41.208.143,198.41.209.136,198.41.209.143,198.41.209.140,198.41.208.137,198.41.208.141,198.41.209.137,198.41.209.142,198.41.208.139,198.41.208.140,198.41.209.141,198.41.209.139,198.41.209.138	300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000,300.000000	F	-
