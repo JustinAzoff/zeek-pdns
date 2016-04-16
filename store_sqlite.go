@@ -74,7 +74,12 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 		return result, err
 	}
 	//Setup the 4 different prepared statements
-	update_tuples, err := tx.Prepare(`UPDATE tuples SET count=count+?, ttl=?, last=datetime(?, 'unixepoch') WHERE query=? AND type=? AND answer=?`)
+	update_tuples, err := tx.Prepare(`UPDATE tuples SET
+		count=count+?,
+		ttl=?,
+		first=min(datetime(?, 'unixepoch'), first),
+		last =max(datetime(?, 'unixepoch'), last)
+		WHERE query=? AND type=? AND answer=?`)
 	if err != nil {
 		return result, err
 	}
@@ -86,7 +91,11 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 	}
 	defer insert_tuples.Close()
 
-	update_individual, err := tx.Prepare(`UPDATE individual SET count=count+?, last=datetime(?, 'unixepoch') WHERE value=? AND which=?`)
+	update_individual, err := tx.Prepare(`UPDATE individual SET
+		count=count+?,
+		first=min(datetime(?, 'unixepoch'), first),
+		last =max(datetime(?, 'unixepoch'), last)
+		WHERE value=? AND which=?`)
 	if err != nil {
 		return result, err
 	}
@@ -102,7 +111,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 	for _, q := range ar.Tuples {
 		//Update the tuples table
 		query := Reverse(q.query)
-		res, err := update_tuples.Exec(q.count, q.ttl, q.last, query, q.qtype, q.answer)
+		res, err := update_tuples.Exec(q.count, q.ttl, q.first, q.last, query, q.qtype, q.answer)
 		if err != nil {
 			return result, err
 		}
@@ -125,7 +134,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		res, err := update_individual.Exec(q.count, q.last, value, q.which)
+		res, err := update_individual.Exec(q.count, q.first, q.last, value, q.which)
 		if err != nil {
 			return result, err
 		}
