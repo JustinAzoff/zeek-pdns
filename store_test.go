@@ -6,7 +6,10 @@ import (
 	"testing"
 )
 
+const pgUrl = "postgres://postgres:password@192.168.59.103/postgres?sslmode=disable"
+
 func doTestLogIndexed(t *testing.T, s Store) {
+	s.Clear()
 	testFilename := "test.log"
 	indexed, err := s.IsLogIndexed(testFilename)
 	if err != nil {
@@ -42,6 +45,7 @@ func LoadFile(s Store, fn string) UpdateResult {
 }
 
 func doExampleUpdating(s Store, forward bool) {
+	s.Clear()
 
 	var files []string
 
@@ -75,6 +79,13 @@ func TestLogIndexedSqlite(t *testing.T) {
 	}
 	doTestLogIndexed(t, store)
 }
+func TestLogIndexedPg(t *testing.T) {
+	store, err := NewStore("postgresql", pgUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doTestLogIndexed(t, store)
+}
 
 func ExampleUpdatingSqliteForward() {
 	store, err := NewStore("sqlite", ":memory:")
@@ -100,4 +111,30 @@ func ExampleUpdatingSqliteReverse() {
 	//B: Inserted=0 Updated=31
 	//Total records: 1
 	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+}
+
+func ExampleUpdatingPgForward() {
+	store, err := NewStore("postgresql", pgUrl)
+	if err != nil {
+		return
+	}
+	doExampleUpdating(store, true)
+	// Output:
+	//A: Inserted=31 Updated=0
+	//B: Inserted=0 Updated=31
+	//Total records: 1
+	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+}
+
+func ExampleUpdatingPgReverse() {
+	store, err := NewStore("postgresql", pgUrl)
+	if err != nil {
+		return
+	}
+	doExampleUpdating(store, false)
+	// Output:
+	//A: Inserted=31 Updated=0
+	//B: Inserted=0 Updated=31
+	//Total records: 1
+	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
 }

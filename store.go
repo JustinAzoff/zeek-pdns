@@ -9,6 +9,7 @@ import (
 
 type Store interface {
 	Init() error
+	Clear() error
 	IsLogIndexed(filename string) (bool, error)
 	SetLogIndexed(filename string) error
 	Update(aggregationResult) (UpdateResult, error)
@@ -81,7 +82,8 @@ type UpdateResult struct {
 }
 
 var storeFactories = map[string]func(string) (Store, error){
-	"sqlite": NewSQLiteStore,
+	"sqlite":     NewSQLiteStore,
+	"postgresql": NewPGStore,
 }
 
 func NewStore(storeType string, filename string) (Store, error) {

@@ -5,18 +5,18 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 )
 
-const schema = `
+const pgschema = `
 CREATE TABLE IF NOT EXISTS tuples (
-	query character varying,
-	type character varying,
-	answer character varying,
+	query text,
+	type text,
+	answer text,
 	count integer,
 	ttl integer,
-	first REAL,
-	last REAL,
+	first timestamp,
+	last timestamp,
 	PRIMARY KEY (query, type, answer)
 ) ;
 CREATE INDEX IF NOT EXISTS tuples_query ON tuples(query);
@@ -26,46 +26,45 @@ CREATE INDEX IF NOT EXISTS tuples_last ON tuples(last);
 
 CREATE TABLE IF NOT EXISTS individual (
 	which char(1),
-	value character varying,
+	value text,
 	count integer,
-	first REAL,
-	last REAL,
+	first timestamp,
+	last timestamp,
 	PRIMARY KEY (which, value)
 );
 CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
 CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
 
 CREATE TABLE IF NOT EXISTS filenames (
-	filename character varying PRIMARY KEY UNIQUE NOT NULL,
-	time REAL DEFAULT (datetime('now', 'localtime'))
+	filename text PRIMARY KEY UNIQUE NOT NULL,
+	time timestamp DEFAULT now()
 );
-PRAGMA case_sensitive_like=ON;
 `
 
-type SQLiteStore struct {
+type PGStore struct {
 	conn *sqlx.DB
 	*SQLCommonStore
 }
 
-func NewSQLiteStore(uri string) (Store, error) {
-	conn, err := sqlx.Open("sqlite3", uri)
+func NewPGStore(uri string) (Store, error) {
+	conn, err := sqlx.Open("postgres", uri)
 	if err != nil {
 		return nil, err
 	}
 	common := &SQLCommonStore{conn: conn}
-	return &SQLiteStore{conn: conn, SQLCommonStore: common}, nil
+	return &PGStore{conn: conn, SQLCommonStore: common}, nil
 }
 
-func (s *SQLiteStore) Close() error {
+func (s *PGStore) Close() error {
 	return s.Close()
 }
 
-func (s *SQLiteStore) Init() error {
-	_, err := s.conn.Exec(schema)
+func (s *PGStore) Init() error {
+	_, err := s.conn.Exec(pgschema)
 	return err
 }
 
-func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
+func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
 	start := time.Now()
 
@@ -77,15 +76,15 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 	update_tuples, err := tx.Prepare(`UPDATE tuples SET
 		count=count+$1,
 		ttl=$2,
-		first=min(datetime($3, 'unixepoch'), first),
-		last =max(datetime($4, 'unixepoch'), last)
+		first=least(to_timestamp($3), first),
+		last =greatest(to_timestamp($4), last)
 		WHERE query=$5 AND type=$6 AND answer=$7`)
 	if err != nil {
 		return result, err
 	}
 	defer update_tuples.Close()
 	insert_tuples, err := tx.Prepare(`INSERT INTO tuples (query, type, answer, ttl, count, first, last)
-	    VALUES ($1, $2, $3, $4, $5, datetime($6, 'unixepoch'), datetime($7,'unixepoch'))`)
+	    VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7))`)
 	if err != nil {
 		return result, err
 	}
@@ -93,15 +92,15 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 
 	update_individual, err := tx.Prepare(`UPDATE individual SET
 		count=count+$1,
-		first=min(datetime($2, 'unixepoch'), first),
-		last =max(datetime($3, 'unixepoch'), last)
+		first=least(to_timestamp($2), first),
+		last =greatest(to_timestamp($3), last)
 		WHERE value=$4 AND which=$5`)
 	if err != nil {
 		return result, err
 	}
 	defer update_individual.Close()
 	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, which, count, first, last)
-	    VALUES ($1, $2, $3, datetime($4, 'unixepoch'), datetime($5,'unixepoch'))`)
+	    VALUES ($1, $2, $3, to_timestamp($4), to_timestamp($5))`)
 	if err != nil {
 		return result, err
 	}
