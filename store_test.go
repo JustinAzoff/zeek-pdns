@@ -3,10 +3,18 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"testing"
 )
 
-const pgUrl = "postgres://postgres:password@192.168.59.103/postgres?sslmode=disable"
+var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
+
+func init() {
+	envUrl := os.Getenv("PG_TEST_URL")
+	if envUrl != "" {
+		pgTestUrl = envUrl
+	}
+}
 
 func doTestLogIndexed(t *testing.T, s Store) {
 	s.Clear()
@@ -80,7 +88,7 @@ func TestLogIndexedSqlite(t *testing.T) {
 	doTestLogIndexed(t, store)
 }
 func TestLogIndexedPg(t *testing.T) {
-	store, err := NewStore("postgresql", pgUrl)
+	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +122,7 @@ func ExampleUpdatingSqliteReverse() {
 }
 
 func ExampleUpdatingPgForward() {
-	store, err := NewStore("postgresql", pgUrl)
+	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
 		return
 	}
@@ -127,7 +135,7 @@ func ExampleUpdatingPgForward() {
 }
 
 func ExampleUpdatingPgReverse() {
-	store, err := NewStore("postgresql", pgUrl)
+	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
 		return
 	}

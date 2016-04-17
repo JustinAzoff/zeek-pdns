@@ -3,3 +3,9 @@ language: go
 go:
   - 1.6
   - tip
+
+services:
+  - postgresql
+
+before_script:
+  - psql -c 'create database pdns_test;' -U postgres
