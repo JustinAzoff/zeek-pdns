@@ -71,11 +71,21 @@ func doExampleUpdating(s Store, forward bool) {
 
 	recs, err := s.FindIndividual("www.reddit.com")
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
-	fmt.Printf("Total records: %d\n", len(recs))
+	fmt.Printf("Individual records: %d\n", len(recs))
 	for _, rec := range recs {
-		fmt.Printf("%s", rec)
+		fmt.Printf("%s\n", rec)
+	}
+	trecs, err := s.FindTuples("198.41.208.138")
+	if err != nil {
+		fmt.Print(err)
+		return
+	}
+	fmt.Printf("Tuple records: %d\n", len(trecs))
+	for _, rec := range trecs {
+		fmt.Printf("%s\n", rec)
 	}
 
 }
@@ -104,8 +114,10 @@ func ExampleUpdatingSqliteForward() {
 	// Output:
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
-	//Total records: 1
+	//Individual records: 1
 	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+	//Tuple records: 1
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
 }
 
 func ExampleUpdatingSqliteReverse() {
@@ -117,8 +129,10 @@ func ExampleUpdatingSqliteReverse() {
 	// Output:
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
-	//Total records: 1
+	//Individual records: 1
 	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+	//Tuple records: 1
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
 }
 
 func ExampleUpdatingPgForward() {
@@ -130,8 +144,10 @@ func ExampleUpdatingPgForward() {
 	// Output:
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
-	//Total records: 1
+	//Individual records: 1
 	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//Tuple records: 1
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
 }
 
 func ExampleUpdatingPgReverse() {
@@ -143,8 +159,10 @@ func ExampleUpdatingPgReverse() {
 	// Output:
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
-	//Total records: 1
+	//Individual records: 1
 	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//Tuple records: 1
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {
