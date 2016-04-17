@@ -39,6 +39,60 @@ CREATE TABLE IF NOT EXISTS filenames (
 	filename text PRIMARY KEY UNIQUE NOT NULL,
 	time timestamp DEFAULT now()
 );
+CREATE OR REPLACE FUNCTION update_individual(w char(1), v text, c integer,f timestamp,l timestamp) RETURNS CHAR(1) AS
+$$
+BEGIN
+    LOOP
+        -- first try to update the key
+        UPDATE individual SET count=count+c,
+        first=least(f, first),
+        last =greatest(l, last)
+        WHERE value=v AND which=w;
+        IF found THEN
+            RETURN 'U';
+        END IF;
+        -- not there, so try to insert the key
+        -- if someone else inserts the same key concurrently,
+        -- we could get a unique-key failure
+        BEGIN
+            INSERT INTO individual (value, which, count, first, last) VALUES (v,w,c,f,l);
+            RETURN 'I';
+        EXCEPTION WHEN unique_violation THEN
+            -- do nothing, and loop to try the UPDATE again
+        END;
+    END LOOP;
+END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION update_tuples(q text, ty text, a text, tt integer, c integer ,f timestamp,l timestamp) RETURNS CHAR(1) AS
+$$
+BEGIN
+    LOOP
+        -- first try to update the key
+        UPDATE tuples SET count=count+c,
+        ttl=tt,
+        first=least(f, first),
+        last =greatest(l, last)
+        WHERE query=q AND  type=ty AND answer=a;
+        IF found THEN
+            RETURN 'U';
+        END IF;
+        -- not there, so try to insert the key
+        -- if someone else inserts the same key concurrently,
+        -- we could get a unique-key failure
+        BEGIN
+            INSERT INTO tuples (query, type, answer, ttl, count, first, last) VALUES (q, ty, a, tt, c, f, l);
+            RETURN 'I';
+        EXCEPTION WHEN unique_violation THEN
+            -- do nothing, and loop to try the UPDATE again
+        END;
+    END LOOP;
+END;
+$$
+LANGUAGE plpgsql;
+
 `
 
 type PGStore struct {
@@ -72,57 +126,32 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	if err != nil {
 		return result, err
 	}
-	//Setup the 4 different prepared statements
-	update_tuples, err := tx.Prepare(`UPDATE tuples SET
-		count=count+$1,
-		ttl=$2,
-		first=least(to_timestamp($3), first),
-		last =greatest(to_timestamp($4), last)
-		WHERE query=$5 AND type=$6 AND answer=$7`)
+	//Setup the 2 different prepared statements
+	update_tuples, err := tx.Prepare("SELECT update_tuples($1, $2, $3, $4, $5, to_timestamp($6)::timestamp, to_timestamp($7)::timestamp)")
 	if err != nil {
 		return result, err
 	}
 	defer update_tuples.Close()
-	insert_tuples, err := tx.Prepare(`INSERT INTO tuples (query, type, answer, ttl, count, first, last)
-	    VALUES ($1, $2, $3, $4, $5, to_timestamp($6), to_timestamp($7))`)
-	if err != nil {
-		return result, err
-	}
-	defer insert_tuples.Close()
 
-	update_individual, err := tx.Prepare(`UPDATE individual SET
-		count=count+$1,
-		first=least(to_timestamp($2), first),
-		last =greatest(to_timestamp($3), last)
-		WHERE value=$4 AND which=$5`)
+	update_individual, err := tx.Prepare("SELECT update_individual($1, $2, $3, to_timestamp($4)::timestamp, to_timestamp($5)::timestamp)")
 	if err != nil {
 		return result, err
 	}
 	defer update_individual.Close()
-	insert_individual, err := tx.Prepare(`INSERT INTO individual (value, which, count, first, last)
-	    VALUES ($1, $2, $3, to_timestamp($4), to_timestamp($5))`)
-	if err != nil {
-		return result, err
-	}
-	defer insert_individual.Close()
 
 	// Ok, now let's update stuff
 	for _, q := range ar.Tuples {
 		//Update the tuples table
 		query := Reverse(q.query)
-		res, err := update_tuples.Exec(q.count, q.ttl, q.first, q.last, query, q.qtype, q.answer)
+		res, err := update_tuples.Query(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
 		if err != nil {
 			return result, err
 		}
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return result, err
-		}
-		if rows == 0 {
-			_, err := insert_tuples.Exec(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
-			if err != nil {
-				return result, err
-			}
+		res.Next()
+		var update_result string
+		res.Scan(&update_result)
+		res.Close()
+		if update_result == "I" {
 			result.Inserted++
 		} else {
 			result.Updated++
@@ -133,19 +162,15 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		res, err := update_individual.Exec(q.count, q.first, q.last, value, q.which)
+		res, err := update_individual.Query(q.which, value, q.count, q.first, q.last)
 		if err != nil {
 			return result, err
 		}
-		rows, err := res.RowsAffected()
-		if err != nil {
-			return result, err
-		}
-		if rows == 0 {
-			_, err := insert_individual.Exec(value, q.which, q.count, q.first, q.last)
-			if err != nil {
-				return result, err
-			}
+		res.Next()
+		var update_result string
+		res.Scan(&update_result)
+		res.Close()
+		if update_result == "I" {
 			result.Inserted++
 		} else {
 			result.Updated++

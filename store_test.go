@@ -146,3 +146,33 @@ func ExampleUpdatingPgReverse() {
 	//Total records: 1
 	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
 }
+
+func BenchmarkUpdateSQLite(b *testing.B) {
+	aggregated, err := aggregate("big.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	store, err := NewStore("sqlite", ":memory:")
+	if err != nil {
+		return
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.Update(aggregated)
+	}
+}
+
+func BenchmarkUpdatePg(b *testing.B) {
+	aggregated, err := aggregate("big.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	store, err := NewStore("postgresql", pgTestUrl)
+	if err != nil {
+		return
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		store.Update(aggregated)
+	}
+}
