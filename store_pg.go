@@ -1,6 +1,10 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -118,6 +122,24 @@ func (s *PGStore) Init() error {
 	return err
 }
 
+func genFullBatchSelect(tmpl string, batchSize int) string {
+	var queries []string
+	numParams := strings.Count(tmpl, "$")
+	arg := 1
+	for i := 0; i < batchSize; i++ {
+		var args []interface{}
+		for p := 0; p < numParams; p++ {
+			args = append(args, arg)
+			arg++
+		}
+		queries = append(queries, fmt.Sprintf(tmpl, args...))
+	}
+	fullq := fmt.Sprintf("SELECT %s", strings.Join(queries, " || "))
+	return fullq
+}
+
+var BATCHSIZE = 50
+
 func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
 	start := time.Now()
@@ -127,55 +149,82 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 		return result, err
 	}
 	//Setup the 2 different prepared statements
-	update_tuples, err := tx.Prepare("SELECT update_tuples($1, $2, $3, $4, $5, to_timestamp($6)::timestamp, to_timestamp($7)::timestamp)")
+	updateTupleTmpl := "update_tuples($%d, $%d, $%d, $%d, $%d, to_timestamp($%d)::timestamp, to_timestamp($%d)::timestamp)"
+	updateTupleBatch, err := tx.Prepare(genFullBatchSelect(updateTupleTmpl, BATCHSIZE))
 	if err != nil {
 		return result, err
 	}
-	defer update_tuples.Close()
+	defer updateTupleBatch.Close()
 
-	update_individual, err := tx.Prepare("SELECT update_individual($1, $2, $3, to_timestamp($4)::timestamp, to_timestamp($5)::timestamp)")
+	updateIndividualTmpl := "update_individual($%d, $%d, $%d, to_timestamp($%d)::timestamp, to_timestamp($%d)::timestamp)"
+	updateIndividualeBatch, err := tx.Prepare(genFullBatchSelect(updateIndividualTmpl, BATCHSIZE))
 	if err != nil {
 		return result, err
 	}
-	defer update_individual.Close()
+	defer updateIndividualeBatch.Close()
+
+	var arguments []interface{}
+	batchCounter := 0
+
+	runBatch := func(tmpl string, preparedBatch *sql.Stmt, arguments []interface{}, batchSize int) {
+		if batchSize == 0 {
+			return
+		}
+		var stmt *sql.Stmt
+		if batchSize == BATCHSIZE {
+			stmt = preparedBatch
+		} else {
+			stmt, err = tx.Prepare(genFullBatchSelect(tmpl, batchSize))
+			defer stmt.Close()
+		}
+		res, err := stmt.Query(arguments...)
+		//log.Printf("Fullq is: %s", fullq)
+		//log.Printf("Arguments is: %#v", arguments)
+		if err != nil {
+			log.Fatal(err)
+		}
+		res.Next()
+		var update_result string
+		res.Scan(&update_result)
+		res.Close()
+		for _, ch := range update_result {
+			if ch == 'I' {
+				result.Inserted++
+			} else {
+				result.Updated++
+			}
+		}
+	}
 
 	// Ok, now let's update stuff
 	for _, q := range ar.Tuples {
 		//Update the tuples table
 		query := Reverse(q.query)
-		res, err := update_tuples.Query(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
-		if err != nil {
-			return result, err
-		}
-		res.Next()
-		var update_result string
-		res.Scan(&update_result)
-		res.Close()
-		if update_result == "I" {
-			result.Inserted++
-		} else {
-			result.Updated++
+		arguments = append(arguments, query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+		batchCounter++
+		if batchCounter == BATCHSIZE {
+			runBatch(updateTupleTmpl, updateTupleBatch, arguments, batchCounter)
+			arguments = arguments[:0]
+			batchCounter = 0
 		}
 	}
+	runBatch(updateTupleTmpl, updateTupleBatch, arguments, batchCounter)
+	arguments = arguments[:0]
+	batchCounter = 0
 	for _, q := range ar.Individual {
 		value := q.value
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		res, err := update_individual.Query(q.which, value, q.count, q.first, q.last)
-		if err != nil {
-			return result, err
-		}
-		res.Next()
-		var update_result string
-		res.Scan(&update_result)
-		res.Close()
-		if update_result == "I" {
-			result.Inserted++
-		} else {
-			result.Updated++
+		arguments = append(arguments, q.which, value, q.count, q.first, q.last)
+		batchCounter++
+		if batchCounter == BATCHSIZE {
+			runBatch(updateIndividualTmpl, updateIndividualeBatch, arguments, batchCounter)
+			arguments = arguments[:0]
+			batchCounter = 0
 		}
 	}
+	runBatch(updateIndividualTmpl, updateIndividualeBatch, arguments, batchCounter)
 	result.Duration = time.Since(start)
 	return result, tx.Commit()
 }
