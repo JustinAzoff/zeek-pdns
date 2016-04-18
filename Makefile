@@ -1,2 +1,9 @@
+all: build test
+build:
+	go get -t -v ./...
+	go build
+test:
+	go test -v ./...
 static:
+	go get -t -v ./...
 	go build --ldflags '-extldflags "-static"'
