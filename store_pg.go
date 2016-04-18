@@ -9,7 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 const pgschema = `
@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS tuples (
 	last timestamp,
 	PRIMARY KEY (query, type, answer)
 ) ;
-CREATE INDEX IF NOT EXISTS tuples_query ON tuples(query);
-CREATE INDEX IF NOT EXISTS tuples_answer ON tuples(answer);
-CREATE INDEX IF NOT EXISTS tuples_first ON tuples(first);
-CREATE INDEX IF NOT EXISTS tuples_last ON tuples(last);
+CREATE INDEX tuples_query ON tuples(query);
+CREATE INDEX tuples_answer ON tuples(answer);
+CREATE INDEX tuples_first ON tuples(first);
+CREATE INDEX tuples_last ON tuples(last);
 
 CREATE TABLE IF NOT EXISTS individual (
 	which char(1),
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS individual (
 	last timestamp,
 	PRIMARY KEY (which, value)
 );
-CREATE INDEX IF NOT EXISTS individual_first ON individual(first);
-CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
+CREATE INDEX individual_first ON individual(first);
+CREATE INDEX individual_last ON individual(last);
 
 CREATE TABLE IF NOT EXISTS filenames (
 	filename text PRIMARY KEY UNIQUE NOT NULL,
@@ -119,6 +119,13 @@ func (s *PGStore) Close() error {
 
 func (s *PGStore) Init() error {
 	_, err := s.conn.Exec(pgschema)
+	// Ignore a duplicte table error message
+	if pqerr, ok := err.(*pq.Error); ok {
+		if pqerr.Code == "42P07"  {
+			return nil
+		}
+	}
+
 	return err
 }
 
