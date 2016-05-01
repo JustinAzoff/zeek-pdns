@@ -136,6 +136,18 @@ var LikeIndividualCmd = &cobra.Command{
 	},
 }
 
+var WebCmd = &cobra.Command{
+	Use:   "web",
+	Short: "start http API",
+	Run: func(cmd *cobra.Command, args []string) {
+		mystore, err := NewStore("sqlite", "db.sqlite")
+		if err != nil {
+			log.Fatal(err)
+		}
+		startWeb(mystore)
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(IndexCmd)
 
@@ -146,6 +158,8 @@ func init() {
 	RootCmd.AddCommand(LikeCmd)
 	LikeCmd.AddCommand(LikeIndividualCmd)
 	LikeCmd.AddCommand(LikeTupleCmd)
+
+	RootCmd.AddCommand(WebCmd)
 }
 
 func main() {
