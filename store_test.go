@@ -27,7 +27,10 @@ func doTestLogIndexed(t *testing.T, s Store) {
 		t.Errorf("IsLogIndexed(%q) == %t, want false", testFilename, indexed)
 	}
 
-	err = s.SetLogIndexed(testFilename)
+	var ar aggregationResult
+	var ur UpdateResult
+
+	err = s.SetLogIndexed(testFilename, ar, ur)
 	if err != nil {
 		t.Fatal(err)
 	}

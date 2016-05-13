@@ -36,8 +36,14 @@ func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 	}
 }
 
-func (s *SQLCommonStore) SetLogIndexed(filename string) error {
-	_, err := s.conn.Exec("INSERT INTO filenames (filename) VALUES ($1)", filename)
+func (s *SQLCommonStore) SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error {
+	q := `INSERT INTO filenames (filename,
+	      aggregation_time, total_records, tuples, individual,
+	      store_time, inserted, updated)
+	      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	_, err := s.conn.Exec(q, filename,
+		ar.Duration.Seconds(), ar.TotalRecords, len(ar.Tuples), len(ar.Individual),
+		ur.Duration.Seconds(), ur.Inserted, ur.Updated)
 	return err
 }
 

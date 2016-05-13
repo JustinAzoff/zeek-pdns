@@ -41,7 +41,14 @@ CREATE INDEX individual_last ON individual(last);
 
 CREATE TABLE IF NOT EXISTS filenames (
 	filename text PRIMARY KEY UNIQUE NOT NULL,
-	time timestamp DEFAULT now()
+	time timestamp DEFAULT now(),
+	aggregation_time real,
+	total_records int,
+	tuples int,
+	individual int,
+	store_time real,
+	inserted int,
+	updated int
 );
 CREATE OR REPLACE FUNCTION update_individual(w char(1), v text, c integer,f timestamp,l timestamp) RETURNS CHAR(1) AS
 $$
@@ -121,7 +128,7 @@ func (s *PGStore) Init() error {
 	_, err := s.conn.Exec(pgschema)
 	// Ignore a duplicte table error message
 	if pqerr, ok := err.(*pq.Error); ok {
-		if pqerr.Code == "42P07"  {
+		if pqerr.Code == "42P07" {
 			return nil
 		}
 	}

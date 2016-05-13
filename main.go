@@ -43,7 +43,7 @@ var IndexCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 			log.Printf("%s: Store: Duration=%0.1f Inserted=%d Updated=%d", fn, result.Duration.Seconds(), result.Inserted, result.Updated)
-			err = mystore.SetLogIndexed(fn)
+			err = mystore.SetLogIndexed(fn, aggregated, result)
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -11,7 +11,7 @@ type Store interface {
 	Init() error
 	Clear() error
 	IsLogIndexed(filename string) (bool, error)
-	SetLogIndexed(filename string) error
+	SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error
 	Update(aggregationResult) (UpdateResult, error)
 	FindQueryTuples(query string) (tupleResults, error)
 	FindTuples(query string) (tupleResults, error)

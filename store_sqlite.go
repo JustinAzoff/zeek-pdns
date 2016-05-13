@@ -37,7 +37,14 @@ CREATE INDEX IF NOT EXISTS individual_last ON individual(last);
 
 CREATE TABLE IF NOT EXISTS filenames (
 	filename character varying PRIMARY KEY UNIQUE NOT NULL,
-	time REAL DEFAULT (datetime('now', 'localtime'))
+	time REAL DEFAULT (datetime('now', 'localtime')),
+	aggregation_time real,
+	total_records int,
+	tuples int,
+	individual int,
+	store_time real,
+	inserted int,
+	updated int
 );
 PRAGMA case_sensitive_like=ON;
 `
