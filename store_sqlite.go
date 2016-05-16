@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS filenames (
 	updated int
 );
 PRAGMA case_sensitive_like=ON;
+PRAGMA journal_mode=WAL;
+PRAGMA synchronous=off;
+PRAGMA temp_store = MEMORY;
+PRAGMA cache_size = 5000;
 `
 
 type SQLiteStore struct {

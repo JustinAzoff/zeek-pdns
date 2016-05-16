@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
 	"strings"
 )
 
@@ -52,6 +53,14 @@ func (r *Record) GetStringByField(field string) string {
 }
 func (r *Record) GetStringByIndex(index int) string {
 	return (*r.cols)[index]
+}
+func (r *Record) GetFloatByIndex(index int) float64 {
+	val := (*r.cols)[index]
+	fl, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		panic(err)
+	}
+	return fl
 }
 
 func (r *Record) GetFieldIndex(field string) int {

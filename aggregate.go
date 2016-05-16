@@ -19,7 +19,7 @@ func stripDecimal(value string) string {
 }
 
 type DNSRecord struct {
-	ts      string
+	ts      float64
 	query   string
 	qtype   string
 	answers []string
@@ -38,8 +38,8 @@ type uniqueIndividual struct {
 
 type queryStat struct {
 	count uint
-	first string
-	last  string
+	first float64
+	last  float64
 	ttl   string
 }
 
@@ -221,7 +221,7 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 			}
 		}
 
-		ts := rec.GetStringByIndex(ts_field)
+		ts := rec.GetFloatByIndex(ts_field)
 		query := rec.GetStringByIndex(query_field)
 		qtype_name := rec.GetStringByIndex(qtype_name_field)
 		answers_raw := rec.GetStringByIndex(answers_field)

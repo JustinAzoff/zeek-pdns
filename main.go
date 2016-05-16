@@ -22,6 +22,7 @@ var IndexCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		var didWork bool
 		mystore.Begin()
 		aggregator := NewDNSAggregator()
 		for _, fn := range args {
@@ -45,6 +46,11 @@ var IndexCmd = &cobra.Command{
 				aggregated.Duration.Seconds(), aggregated.TotalRecords, len(aggregated.Tuples), len(aggregated.Individual))
 			var emptyStoreResult UpdateResult
 			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
+			didWork = true
+		}
+		if !didWork {
+			return
+			//TODO: rollback transaction
 		}
 		aggregated := aggregator.GetResult()
 		result, err := mystore.Update(aggregated)
