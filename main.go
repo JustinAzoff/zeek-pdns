@@ -23,6 +23,7 @@ var IndexCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		mystore.Begin()
+		aggregator := NewDNSAggregator()
 		for _, fn := range args {
 			indexed, err := mystore.IsLogIndexed(fn)
 			if err != nil {
@@ -33,25 +34,28 @@ var IndexCmd = &cobra.Command{
 				continue
 			}
 
-			aggregator := NewDNSAggregator()
-			err = aggregate(aggregator, fn)
+			fileAgg := NewDNSAggregator()
+			err = aggregate(fileAgg, fn)
 			if err != nil {
 				log.Fatal(err)
 			}
-			aggregated := aggregator.GetResult()
+			aggregator.Merge(fileAgg)
+			aggregated := fileAgg.GetResult()
 			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d Tuples=%d Individual=%d", fn,
 				aggregated.Duration.Seconds(), aggregated.TotalRecords, len(aggregated.Tuples), len(aggregated.Individual))
-			result, err := mystore.Update(aggregated)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Printf("%s: Store: Duration=%0.1f Inserted=%d Updated=%d", fn, result.Duration.Seconds(), result.Inserted, result.Updated)
-			err = mystore.SetLogIndexed(fn, aggregated, result)
-			if err != nil {
-				log.Fatal(err)
-			}
+			var emptyStoreResult UpdateResult
+			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
 		}
-		mystore.Commit()
+		aggregated := aggregator.GetResult()
+		result, err := mystore.Update(aggregated)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("batch: Store: Duration=%0.1f Inserted=%d Updated=%d", result.Duration.Seconds(), result.Inserted, result.Updated)
+		err = mystore.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
