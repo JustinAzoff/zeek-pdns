@@ -44,10 +44,12 @@ func doTestLogIndexed(t *testing.T, s Store) {
 }
 
 func LoadFile(s Store, fn string) UpdateResult {
-	aggregated, err := aggregate(fn)
+	aggregator := NewDNSAggregator()
+	err := aggregate(aggregator, fn)
 	if err != nil {
 		log.Fatal(err)
 	}
+	aggregated := aggregator.GetResult()
 	result, err := s.Update(aggregated)
 	if err != nil {
 		log.Fatal(err)
@@ -169,7 +171,12 @@ func ExampleUpdatingPgReverse() {
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {
-	aggregated, err := aggregate("big.log")
+	aggregator := NewDNSAggregator()
+	err := aggregate(aggregator, "big.log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	aggregated := aggregator.GetResult()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -184,10 +191,12 @@ func BenchmarkUpdateSQLite(b *testing.B) {
 }
 
 func BenchmarkUpdatePg(b *testing.B) {
-	aggregated, err := aggregate("big.log")
+	aggregator := NewDNSAggregator()
+	err := aggregate(aggregator, "big.log")
 	if err != nil {
 		log.Fatal(err)
 	}
+	aggregated := aggregator.GetResult()
 	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
 		return

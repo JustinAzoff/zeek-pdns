@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -15,7 +16,9 @@ func Reverse(s string) string {
 }
 
 type SQLCommonStore struct {
-	conn *sqlx.DB
+	conn    *sqlx.DB
+	tx      *sql.Tx
+	txDepth int
 }
 
 func (s *SQLCommonStore) Clear() error {
@@ -23,9 +26,44 @@ func (s *SQLCommonStore) Clear() error {
 	return err
 }
 
+func (s *SQLCommonStore) Begin() (*sql.Tx, error) {
+	if s.tx != nil {
+		s.txDepth += 1
+		//log.Printf("Returning existing transaction: depth=%d\n", s.txDepth)
+		return s.tx, nil
+	}
+	//log.Printf("new transaction\n")
+	tx, err := s.conn.Begin()
+	if err != nil {
+		return tx, err
+	}
+	s.tx = tx
+	s.txDepth += 1
+	return s.tx, nil
+}
+func (s *SQLCommonStore) Commit() error {
+	if s.tx == nil {
+		return errors.New("Commit outside of transaction")
+	}
+	s.txDepth -= 1
+	if s.txDepth > 0 {
+		//log.Printf("Not commiting stacked transaction: depth=%d\n", s.txDepth)
+		return nil // No OP
+	}
+	//log.Printf("Commiting transaction: depth=%d\n", s.txDepth)
+	err := s.tx.Commit()
+	s.tx = nil
+	return err
+}
+
 func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
+	tx, err := s.Begin()
+	if err != nil {
+		return false, err
+	}
 	var fn string
-	err := s.conn.QueryRow("SELECT filename FROM filenames WHERE filename=$1", filename).Scan(&fn)
+	err = tx.QueryRow("SELECT filename FROM filenames WHERE filename=$1", filename).Scan(&fn)
+	s.Commit()
 	switch {
 	case err == sql.ErrNoRows:
 		return false, nil
@@ -37,13 +75,18 @@ func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 }
 
 func (s *SQLCommonStore) SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error {
+	tx, err := s.Begin()
+	if err != nil {
+		return err
+	}
 	q := `INSERT INTO filenames (filename,
 	      aggregation_time, total_records, tuples, individual,
 	      store_time, inserted, updated)
 	      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
-	_, err := s.conn.Exec(q, filename,
+	_, err = tx.Exec(q, filename,
 		ar.Duration.Seconds(), ar.TotalRecords, len(ar.Tuples), len(ar.Individual),
 		ur.Duration.Seconds(), ur.Inserted, ur.Updated)
+	s.Commit()
 	return err
 }
 

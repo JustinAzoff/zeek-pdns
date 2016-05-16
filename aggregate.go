@@ -191,12 +191,10 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 	return
 }
 
-func aggregate(fn string) (aggregationResult, error) {
-	aggregator := NewDNSAggregator()
-
+func aggregate(aggregator *DNSAggregator, fn string) error {
 	f, err := backend.OpenDecompress(fn)
 	if err != nil {
-		return aggregator.GetResult(), err
+		return err
 	}
 	br := NewBroAsciiReader(f)
 
@@ -205,7 +203,7 @@ func aggregate(fn string) (aggregationResult, error) {
 	for {
 		rec, err := br.Next()
 		if err != nil {
-			return aggregator.GetResult(), err
+			return err
 		}
 		if rec == nil {
 			break
@@ -219,7 +217,7 @@ func aggregate(fn string) (aggregationResult, error) {
 			ttl_field = rec.GetFieldIndex("TTLs")
 			br.HandledHeaders()
 			if rec.err != nil {
-				return aggregator.GetResult(), err
+				return err
 			}
 		}
 
@@ -229,7 +227,7 @@ func aggregate(fn string) (aggregationResult, error) {
 		answers_raw := rec.GetStringByIndex(answers_field)
 		ttls_raw := rec.GetStringByIndex(ttl_field)
 		if rec.err != nil {
-			return aggregator.GetResult(), err
+			return err
 		}
 		answers := strings.Split(answers_raw, ",")
 		ttls := strings.Split(ttls_raw, ",")
@@ -243,5 +241,5 @@ func aggregate(fn string) (aggregationResult, error) {
 		aggregator.AddRecord(dns_record)
 	}
 
-	return aggregator.GetResult(), nil
+	return nil
 }

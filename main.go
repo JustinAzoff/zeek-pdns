@@ -22,6 +22,7 @@ var IndexCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
+		mystore.Begin()
 		for _, fn := range args {
 			indexed, err := mystore.IsLogIndexed(fn)
 			if err != nil {
@@ -32,10 +33,12 @@ var IndexCmd = &cobra.Command{
 				continue
 			}
 
-			aggregated, err := aggregate(fn)
+			aggregator := NewDNSAggregator()
+			err = aggregate(aggregator, fn)
 			if err != nil {
 				log.Fatal(err)
 			}
+			aggregated := aggregator.GetResult()
 			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d Tuples=%d Individual=%d", fn,
 				aggregated.Duration.Seconds(), aggregated.TotalRecords, len(aggregated.Tuples), len(aggregated.Individual))
 			result, err := mystore.Update(aggregated)
@@ -48,6 +51,7 @@ var IndexCmd = &cobra.Command{
 				log.Fatal(err)
 			}
 		}
+		mystore.Commit()
 	},
 }
 

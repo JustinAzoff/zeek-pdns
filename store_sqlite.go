@@ -76,7 +76,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
 	start := time.Now()
 
-	tx, err := s.conn.Begin()
+	tx, err := s.Begin()
 	if err != nil {
 		return result, err
 	}
@@ -160,5 +160,5 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 		}
 	}
 	result.Duration = time.Since(start)
-	return result, tx.Commit()
+	return result, s.Commit()
 }

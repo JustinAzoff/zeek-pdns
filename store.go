@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +11,8 @@ import (
 type Store interface {
 	Init() error
 	Clear() error
+	Begin() (*sql.Tx, error)
+	Commit() error
 	IsLogIndexed(filename string) (bool, error)
 	SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error
 	Update(aggregationResult) (UpdateResult, error)
