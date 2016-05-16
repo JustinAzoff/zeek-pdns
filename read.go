@@ -50,23 +50,8 @@ func (r *Record) GetStringByField(field string) string {
 	r.err = fmt.Errorf("Invalid field %s", field)
 	return ""
 }
-func (r *Record) GetStringByIndexX(index int) string {
-	return (*r.cols)[index]
-}
 func (r *Record) GetStringByIndex(index int) string {
-	line := *r.line
-	for i := 0; i < index; i++ {
-		pos := strings.Index(line, "\t")
-		if pos == -1 {
-			return ""
-		}
-		line = line[pos+1:]
-	}
-	end := strings.Index(line, "\t")
-	if end == -1 {
-		end = len(line)
-	}
-	return line[:end]
+	return (*r.cols)[index]
 }
 
 func (r *Record) GetFieldIndex(field string) int {
