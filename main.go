@@ -6,7 +6,18 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+func getStore() Store {
+	storeType := viper.GetString("store.type")
+	storeUri := viper.GetString("store.uri")
+	mystore, err := NewStore(storeType, storeUri)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return mystore
+}
 
 var RootCmd = &cobra.Command{
 	Use:   "bro-pdns",
@@ -18,10 +29,7 @@ var IndexCmd = &cobra.Command{
 	Use:   "index",
 	Short: "Index a dns log file",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
+		mystore := getStore()
 		var didWork bool
 		mystore.Begin()
 		aggregator := NewDNSAggregator()
@@ -74,10 +82,7 @@ var FindTupleCmd = &cobra.Command{
 	Use:   "tuple",
 	Short: "find dns tuples",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
+		mystore := getStore()
 
 		for _, value := range args {
 			recs, err := mystore.FindTuples(value)
@@ -93,10 +98,7 @@ var FindIndividualCmd = &cobra.Command{
 	Use:   "individual",
 	Short: "find an individual dns value",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
+		mystore := getStore()
 
 		for _, value := range args {
 			recs, err := mystore.FindIndividual(value)
@@ -116,10 +118,7 @@ var LikeTupleCmd = &cobra.Command{
 	Use:   "tuple",
 	Short: "find like dns tuples",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
+		mystore := getStore()
 
 		for _, value := range args {
 			recs, err := mystore.LikeTuples(value)
@@ -135,10 +134,7 @@ var LikeIndividualCmd = &cobra.Command{
 	Use:   "individual",
 	Short: "find like individual dns values",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
+		mystore := getStore()
 
 		for _, value := range args {
 			recs, err := mystore.LikeIndividual(value)
@@ -154,11 +150,9 @@ var WebCmd = &cobra.Command{
 	Use:   "web",
 	Short: "start http API",
 	Run: func(cmd *cobra.Command, args []string) {
-		mystore, err := NewStore("sqlite", "db.sqlite")
-		if err != nil {
-			log.Fatal(err)
-		}
-		startWeb(mystore)
+		mystore := getStore()
+		bind := viper.GetString("http.listen")
+		startWeb(mystore, bind)
 	},
 }
 
@@ -173,7 +167,21 @@ func init() {
 	LikeCmd.AddCommand(LikeIndividualCmd)
 	LikeCmd.AddCommand(LikeTupleCmd)
 
+	WebCmd.Flags().String("listen", ":8080", "Address to listen on")
+	viper.BindPFlag("http.listen", WebCmd.Flags().Lookup("listen"))
+	viper.BindEnv("http.listen", "PDNS_HTTP_LISTEN")
+
 	RootCmd.AddCommand(WebCmd)
+
+	RootCmd.PersistentFlags().String("store", "sqlite", "Backend data store")
+	viper.BindPFlag("store.type", RootCmd.PersistentFlags().Lookup("store"))
+	viper.BindEnv("store.type", "PDNS_STORE_TYPE")
+
+	RootCmd.PersistentFlags().String("uri", "db.sqlite", "Backend data store URI")
+	viper.BindPFlag("store.uri", RootCmd.PersistentFlags().Lookup("uri"))
+	viper.BindEnv("store.uri", "PDNS_STORE_URI")
+
+	viper.AutomaticEnv()
 }
 
 func main() {

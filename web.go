@@ -61,14 +61,13 @@ func (h *pdnsHandler) handleSearchIndividual(w http.ResponseWriter, req *http.Re
 	json.NewEncoder(w).Encode(recs)
 }
 
-func startWeb(s Store) {
+func startWeb(s Store, bind string) {
 	h := &pdnsHandler{s: s}
 	r := mux.NewRouter()
 	r.HandleFunc("/dns/{searchType}/tuples/{query}", h.handleSearchTuples)
 	r.HandleFunc("/dns/{searchType}/individual/{query}", h.handleSearchIndividual)
 	http.Handle("/", r)
 
-	bind := ":8080"
 	log.Printf("Listening on %q\n", bind)
 	log.Fatal(http.ListenAndServe(bind, nil))
 }
