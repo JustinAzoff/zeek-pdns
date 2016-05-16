@@ -156,6 +156,41 @@ func (d *DNSAggregator) GetResult() aggregationResult {
 
 }
 
+func (d *DNSAggregator) Merge(other *DNSAggregator) {
+	for q, stat := range other.queries {
+		rec := d.queries[q]
+		if rec == nil {
+			d.queries[q] = stat
+		} else {
+			rec.count += stat.count
+			if stat.first < rec.first {
+				rec.first = stat.first
+			}
+			if stat.last > rec.last {
+				rec.last = stat.last
+			}
+			rec.ttl = stat.ttl
+		}
+	}
+	for q, stat := range other.values {
+		rec := d.values[q]
+		if rec == nil {
+			d.values[q] = stat
+		} else {
+			rec.count += stat.count
+			if stat.first < rec.first {
+				rec.first = stat.first
+			}
+			if stat.last > rec.last {
+				rec.last = stat.last
+			}
+			rec.ttl = stat.ttl
+		}
+	}
+	return
+	return
+}
+
 func aggregate(fn string) (aggregationResult, error) {
 	aggregator := NewDNSAggregator()
 
