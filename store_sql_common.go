@@ -61,9 +61,9 @@ func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer s.Commit()
 	var fn string
 	err = tx.QueryRow("SELECT filename FROM filenames WHERE filename=$1", filename).Scan(&fn)
-	s.Commit()
 	switch {
 	case err == sql.ErrNoRows:
 		return false, nil
@@ -76,17 +76,17 @@ func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 
 func (s *SQLCommonStore) SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error {
 	tx, err := s.Begin()
+	defer s.Commit()
 	if err != nil {
 		return err
 	}
 	q := `INSERT INTO filenames (filename,
-	      aggregation_time, total_records, tuples, individual,
+	      aggregation_time, total_records, skipped_records, tuples, individual,
 	      store_time, inserted, updated)
-	      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`
+	      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
 	_, err = tx.Exec(q, filename,
-		ar.Duration.Seconds(), ar.TotalRecords, len(ar.Tuples), len(ar.Individual),
+		ar.Duration.Seconds(), ar.TotalRecords, ar.SkippedRecords, len(ar.Tuples), len(ar.Individual),
 		ur.Duration.Seconds(), ur.Inserted, ur.Updated)
-	s.Commit()
 	return err
 }
 

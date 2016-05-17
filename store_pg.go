@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS filenames (
 	time timestamp DEFAULT now(),
 	aggregation_time real,
 	total_records int,
+	skipped_records int,
 	tuples int,
 	individual int,
 	store_time real,

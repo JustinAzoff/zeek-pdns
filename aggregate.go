@@ -1,11 +1,14 @@
 package main
 
 import (
+	"log"
 	"strings"
 	"time"
 
 	"github.com/JustinAzoff/flow-indexer/backend"
 )
+
+var MAX_SANE_VALUE_LEN = 1000
 
 func stripDecimal(value string) string {
 	if value == "-" {
@@ -44,10 +47,11 @@ type queryStat struct {
 }
 
 type aggregationResult struct {
-	Duration     time.Duration
-	TotalRecords uint
-	Tuples       []aggregatedTuple
-	Individual   []aggregatedIndividual
+	Duration       time.Duration
+	TotalRecords   uint
+	SkippedRecords uint
+	Tuples         []aggregatedTuple
+	Individual     []aggregatedIndividual
 }
 
 type aggregatedTuple struct {
@@ -60,10 +64,11 @@ type aggregatedIndividual struct {
 }
 
 type DNSAggregator struct {
-	queries      map[uniqueTuple]*queryStat
-	values       map[uniqueIndividual]*queryStat
-	totalRecords uint
-	start        time.Time
+	queries        map[uniqueTuple]*queryStat
+	values         map[uniqueIndividual]*queryStat
+	totalRecords   uint
+	skippedRecords uint
+	start          time.Time
 }
 
 func NewDNSAggregator() *DNSAggregator {
@@ -77,6 +82,11 @@ func NewDNSAggregator() *DNSAggregator {
 }
 
 func (d *DNSAggregator) AddRecord(r DNSRecord) {
+	if len(r.query) > MAX_SANE_VALUE_LEN {
+		log.Printf("Skipping record with insane query length: %#v\n", r)
+		d.skippedRecords++
+		return
+	}
 	d.totalRecords++
 	query_value := uniqueIndividual{value: r.query, which: "Q"}
 
@@ -94,6 +104,11 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 	}
 
 	for idx, answer := range r.answers {
+		if len(answer) > MAX_SANE_VALUE_LEN {
+			log.Printf("Skipping record with insane answer length: %#v\n", r)
+			d.skippedRecords++
+			return
+		}
 		ttl := stripDecimal(r.ttls[idx])
 		uquery := uniqueTuple{
 			query:  r.query,
@@ -151,6 +166,7 @@ func (d *DNSAggregator) GetResult() aggregationResult {
 		result.Individual = append(result.Individual, agg)
 	}
 	result.TotalRecords = d.totalRecords
+	result.SkippedRecords = d.skippedRecords
 	result.Duration = time.Since(d.start)
 	return result
 

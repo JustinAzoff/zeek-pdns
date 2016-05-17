@@ -50,10 +50,13 @@ var IndexCmd = &cobra.Command{
 			}
 			aggregator.Merge(fileAgg)
 			aggregated := fileAgg.GetResult()
-			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d Tuples=%d Individual=%d", fn,
-				aggregated.Duration.Seconds(), aggregated.TotalRecords, len(aggregated.Tuples), len(aggregated.Individual))
+			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d SkippedRecords=%d Tuples=%d Individual=%d", fn,
+				aggregated.Duration.Seconds(), aggregated.TotalRecords, aggregated.SkippedRecords, len(aggregated.Tuples), len(aggregated.Individual))
 			var emptyStoreResult UpdateResult
 			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
+			if err != nil {
+				log.Fatal(err)
+			}
 			didWork = true
 		}
 		if !didWork {
