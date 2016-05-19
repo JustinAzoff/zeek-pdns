@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS tuples (
 	query text,
 	type text,
 	answer text,
-	count integer,
+	count bigint,
 	ttl integer,
 	first timestamp,
 	last timestamp,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS tuples (
 CREATE TABLE IF NOT EXISTS individual (
 	which char(1),
 	value text,
-	count integer,
+	count bigint,
 	first timestamp,
 	last timestamp,
 	PRIMARY KEY (which, value)
