@@ -159,6 +159,14 @@ var WebCmd = &cobra.Command{
 	},
 }
 
+var VersionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Output version number",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(VERSION)
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(IndexCmd)
 
@@ -175,6 +183,7 @@ func init() {
 	viper.BindEnv("http.listen", "PDNS_HTTP_LISTEN")
 
 	RootCmd.AddCommand(WebCmd)
+	RootCmd.AddCommand(VersionCmd)
 
 	RootCmd.PersistentFlags().String("store", "sqlite", "Backend data store")
 	viper.BindPFlag("store.type", RootCmd.PersistentFlags().Lookup("store"))

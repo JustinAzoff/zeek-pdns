@@ -13,6 +13,7 @@ import (
 )
 
 const pgschema = `
+set synchronous_commit to off;
 CREATE TABLE IF NOT EXISTS tuples (
 	query text,
 	type text,
@@ -23,10 +24,10 @@ CREATE TABLE IF NOT EXISTS tuples (
 	last timestamp,
 	PRIMARY KEY (query, type, answer)
 ) ;
-CREATE INDEX tuples_query ON tuples(query);
-CREATE INDEX tuples_answer ON tuples(answer);
-CREATE INDEX tuples_first ON tuples(first);
-CREATE INDEX tuples_last ON tuples(last);
+-- CREATE INDEX tuples_query ON tuples(query);
+-- CREATE INDEX tuples_answer ON tuples(answer);
+-- CREATE INDEX tuples_first ON tuples(first);
+-- CREATE INDEX tuples_last ON tuples(last);
 
 CREATE TABLE IF NOT EXISTS individual (
 	which char(1),
@@ -36,8 +37,8 @@ CREATE TABLE IF NOT EXISTS individual (
 	last timestamp,
 	PRIMARY KEY (which, value)
 );
-CREATE INDEX individual_first ON individual(first);
-CREATE INDEX individual_last ON individual(last);
+-- CREATE INDEX individual_first ON individual(first);
+-- CREATE INDEX individual_last ON individual(last);
 
 CREATE TABLE IF NOT EXISTS filenames (
 	filename text PRIMARY KEY UNIQUE NOT NULL,
@@ -104,7 +105,6 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
 `
 
 type PGStore struct {
@@ -153,7 +153,7 @@ func genFullBatchSelect(tmpl string, batchSize int) string {
 	return fullq
 }
 
-var BATCHSIZE = 50
+var BATCHSIZE = 200
 
 func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
