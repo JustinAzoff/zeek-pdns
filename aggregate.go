@@ -109,6 +109,9 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 			d.skippedRecords++
 			return
 		}
+		if answer == "-" {
+			continue
+		}
 		ttl := stripDecimal(r.ttls[idx])
 		uquery := uniqueTuple{
 			query:  r.query,
