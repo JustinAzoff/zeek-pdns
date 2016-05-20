@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS tuples (
 	last timestamp,
 	PRIMARY KEY (query, type, answer)
 ) ;
--- CREATE INDEX tuples_query ON tuples(query);
--- CREATE INDEX tuples_answer ON tuples(answer);
+CREATE INDEX tuples_query ON tuples(query varchar_pattern_ops);
+CREATE INDEX tuples_answer ON tuples(answer varchar_pattern_ops);
 -- CREATE INDEX tuples_first ON tuples(first);
 -- CREATE INDEX tuples_last ON tuples(last);
 
@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS individual (
 	last timestamp,
 	PRIMARY KEY (which, value)
 );
+CREATE INDEX individual_value ON individual(value varchar_pattern_ops);
 -- CREATE INDEX individual_first ON individual(first);
 -- CREATE INDEX individual_last ON individual(last);
 
