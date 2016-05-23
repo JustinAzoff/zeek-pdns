@@ -115,7 +115,7 @@ func (s *SQLCommonStore) FindQueryTuples(query string) (tupleResults, error) {
 func (s *SQLCommonStore) FindTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = $1 OR answer = $2", rquery, query)
+	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query = $1 OR answer = $2 ORDER BY query, answer", rquery, query)
 	reverseQuery(tr)
 
 	return tr, err
@@ -123,14 +123,14 @@ func (s *SQLCommonStore) FindTuples(query string) (tupleResults, error) {
 func (s *SQLCommonStore) LikeTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query like $1 OR answer like $2", rquery+"%", query+"%")
+	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query like $1 OR answer like $2 ORDER BY query, answer", rquery+"%", query+"%")
 	reverseQuery(tr)
 	return tr, err
 }
 func (s *SQLCommonStore) FindIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value = $1) OR (which='Q' AND value = $2)", value, rvalue)
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value = $1) OR (which='Q' AND value = $2) ORDER BY value", value, rvalue)
 	reverseValue(tr)
 	return tr, err
 }
@@ -138,7 +138,7 @@ func (s *SQLCommonStore) FindIndividual(value string) (individualResults, error)
 func (s *SQLCommonStore) LikeIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like $1) OR (which='Q' AND value like $2)", value+"%", rvalue+"%")
+	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like $1) OR (which='Q' AND value like $2) ORDER BY value", value+"%", rvalue+"%")
 	reverseValue(tr)
 	return tr, err
 }
