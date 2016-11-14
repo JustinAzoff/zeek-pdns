@@ -56,11 +56,11 @@ Query Database
 --------------
 
     # suffix search:
-    $ bro-pdns like tuple google.com
+    $ bro-pdns like tuples google.com
     $ bro-pdns like individual google.com
 
     # exact match
-    $ bro-pdns find tuple google.com
+    $ bro-pdns find tuples google.com
     $ bro-pdns find individual google.com
 
 Start HTTP server

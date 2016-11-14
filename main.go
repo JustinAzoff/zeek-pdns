@@ -82,7 +82,7 @@ var FindCmd = &cobra.Command{
 	Run:   nil,
 }
 var FindTupleCmd = &cobra.Command{
-	Use:   "tuple",
+	Use:   "tuples",
 	Short: "find dns tuples",
 	Run: func(cmd *cobra.Command, args []string) {
 		mystore := getStore()
@@ -118,7 +118,7 @@ var LikeCmd = &cobra.Command{
 	Run:   nil,
 }
 var LikeTupleCmd = &cobra.Command{
-	Use:   "tuple",
+	Use:   "tuples",
 	Short: "find like dns tuples",
 	Run: func(cmd *cobra.Command, args []string) {
 		mystore := getStore()
