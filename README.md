@@ -32,28 +32,46 @@ Examples of questions this database can answer faster than the raw logs:
 Requirements
 ------------
 
-* Bro 2.x
-* Python >= 2.6
-  * Bottle
-  * SQLAlchemy
-* An SQL database supported by SQLAlchemy.  SQLite works, but is not recommended.
+* go compiler ( to build )
+* postgresql ( optional )
 
-Usage
+Build
 -----
 
-In local.bro:
+    $ go build
 
-    @load ./bro-pdns
+Index logs
+----------
 
-    #any URI supported by sqlalchemy 
-    #see http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html
-    # i.e. redef PDNS::uri = "postgres://pdns:password@dbhost/pdns";
-    redef PDNS::uri = "sqlite:////tmp/dns.db";
+    export PDNS_STORE_TYPE="postgresql"
+    export PDNS_STORE_URI="postgres://pdns:foo@localhost/pdns?sslmode=disable"
 
-To run the http api server:
+    # or 
+    export PDNS_STORE_TYPE="sqlite"
+    export PDNS_STORE_URI="/path/to/passivedns.sqlite"
 
-    $ BRO_PDNS_DB=sqlite:////tmp/dns.db /path/to/bro_pdns.py serve
+    find /usr/local/bro/logs -name dns* | sort -n | xargs -n 50 bro-pdns index
 
-Usage:
+Query Database
+--------------
 
-    $ curl http://localhost:8081/dns/1.2.3.4
+    # suffix search:
+    $ bro-pdns like tuple google.com
+    $ bro-pdns like individual google.com
+
+    # exact match
+    $ bro-pdns find tuple google.com
+    $ bro-pdns find individual google.com
+
+Start HTTP server
+-----------------
+
+    $ bro-pdns web
+
+Query HTTP API
+--------------
+
+    $ curl localhost:8080/dns/like/tuples/google.com
+    $ curl localhost:8080/dns/like/invidual/google.com
+    $ curl localhost:8080/dns/find/tuples/google.com
+    $ curl localhost:8080/dns/find/individual/google.com

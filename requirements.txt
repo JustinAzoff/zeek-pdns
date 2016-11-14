@@ -1,2 +1,0 @@
-SQLAlchemy==0.9.3
-bottle==0.11.6
