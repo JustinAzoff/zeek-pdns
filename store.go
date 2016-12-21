@@ -21,6 +21,7 @@ type Store interface {
 	FindIndividual(value string) (individualResults, error)
 	LikeTuples(query string) (tupleResults, error)
 	LikeIndividual(value string) (individualResults, error)
+	DeleteOld(days int64) (int64, error)
 	Close() error
 }
 

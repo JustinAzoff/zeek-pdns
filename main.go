@@ -149,6 +149,19 @@ var LikeIndividualCmd = &cobra.Command{
 	},
 }
 
+var DeleteOldCmd = &cobra.Command{
+	Use:   "delete-old",
+	Short: "delete old records",
+	Run: func(cmd *cobra.Command, args []string) {
+		mystore := getStore()
+		rows, err := mystore.DeleteOld(365)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("Deleted %d records", rows)
+	},
+}
+
 var WebCmd = &cobra.Command{
 	Use:   "web",
 	Short: "start http API",
@@ -177,6 +190,11 @@ func init() {
 	RootCmd.AddCommand(LikeCmd)
 	LikeCmd.AddCommand(LikeIndividualCmd)
 	LikeCmd.AddCommand(LikeTupleCmd)
+
+	DeleteOldCmd.Flags().Int64("days", 365, "Age in days of records to be deleted")
+	viper.BindPFlag("deleteold.days", DeleteOldCmd.Flags().Lookup("days"))
+	viper.BindEnv("deleteold.days", "PDNS_DELETE_OLD_DAYS")
+	RootCmd.AddCommand(DeleteOldCmd)
 
 	WebCmd.Flags().String("listen", ":8080", "Address to listen on")
 	viper.BindPFlag("http.listen", WebCmd.Flags().Lookup("listen"))

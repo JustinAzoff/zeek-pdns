@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -141,4 +142,27 @@ func (s *SQLCommonStore) LikeIndividual(value string) (individualResults, error)
 	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like $1) OR (which='Q' AND value like $2) ORDER BY value", value+"%", rvalue+"%")
 	reverseValue(tr)
 	return tr, err
+}
+
+//DeleteOld Deletes records that haven't been seen in DAYS, returns the total records deleted
+func (s *SQLCommonStore) DeleteOld(days int64) (int64, error) {
+	var deletedRows int64
+	cutoff := time.Now().Add(time.Duration(-1*days) * time.Hour * 24)
+	res, err := s.conn.Exec("DELETE FROM individual WHERE last < $1", cutoff)
+	if err != nil {
+		return deletedRows, err
+	}
+	rows, err := res.RowsAffected()
+	deletedRows += rows
+	if err != nil {
+		return deletedRows, err
+	}
+
+	res, err = s.conn.Exec("DELETE FROM tuples WHERE last < $1", cutoff)
+	if err != nil {
+		return deletedRows, err
+	}
+	rows, err = res.RowsAffected()
+	deletedRows += rows
+	return deletedRows, err
 }
