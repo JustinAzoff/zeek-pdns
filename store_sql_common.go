@@ -26,8 +26,12 @@ func (s *SQLCommonStore) Clear() error {
 	_, err := s.conn.Exec("DELETE FROM filenames;DELETE FROM individual;DELETE FROM tuples;")
 	return err
 }
+func (s *SQLCommonStore) Begin() error {
+	_, err := s.BeginTx()
+	return err
+}
 
-func (s *SQLCommonStore) Begin() (*sql.Tx, error) {
+func (s *SQLCommonStore) BeginTx() (*sql.Tx, error) {
 	if s.tx != nil {
 		s.txDepth += 1
 		//log.Printf("Returning existing transaction: depth=%d\n", s.txDepth)
@@ -58,7 +62,7 @@ func (s *SQLCommonStore) Commit() error {
 }
 
 func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
-	tx, err := s.Begin()
+	tx, err := s.BeginTx()
 	if err != nil {
 		return false, err
 	}
@@ -76,7 +80,7 @@ func (s *SQLCommonStore) IsLogIndexed(filename string) (bool, error) {
 }
 
 func (s *SQLCommonStore) SetLogIndexed(filename string, ar aggregationResult, ur UpdateResult) error {
-	tx, err := s.Begin()
+	tx, err := s.BeginTx()
 	defer s.Commit()
 	if err != nil {
 		return err
