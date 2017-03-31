@@ -1,6 +1,8 @@
 Passive DNS for Bro
 ===================
 
+[![Build Status](https://travis-ci.org/JustinAzoff/bro-pdns.svg?branch=go-rewrite)](https://travis-ci.org/JustinAzoff/bro-pdns)
+
 This is an extremely simple implementation of a passive DNS collection system
 that utilizes Bro for DNS log collection.
 
