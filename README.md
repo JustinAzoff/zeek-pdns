@@ -74,6 +74,6 @@ Query HTTP API
 --------------
 
     $ curl localhost:8080/dns/like/tuples/google.com
-    $ curl localhost:8080/dns/like/invidual/google.com
+    $ curl localhost:8080/dns/like/individual/google.com
     $ curl localhost:8080/dns/find/tuples/google.com
     $ curl localhost:8080/dns/find/individual/google.com
