@@ -150,9 +150,9 @@ func ExampleUpdatingPgForward() {
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
 	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//www.reddit.com	Q	2	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
 	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
 }
 
 func ExampleUpdatingPgReverse() {
@@ -165,9 +165,9 @@ func ExampleUpdatingPgReverse() {
 	//A: Inserted=31 Updated=0
 	//B: Inserted=0 Updated=31
 	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//www.reddit.com	Q	2	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
 	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.743478Z	2016-04-01T21:55:04.609809Z
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {
