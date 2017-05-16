@@ -223,7 +223,7 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 
 	for _, q := range ar.Tuples {
 		query := Reverse(q.query)
-		_, err = stmt.Exec(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+		_, err = stmt.Exec(query, q.qtype, q.answer, q.count, q.ttl, q.first, q.last)
 		if err != nil {
 			return result, err
 		}
