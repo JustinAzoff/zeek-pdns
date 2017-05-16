@@ -18,7 +18,7 @@ func Reverse(s string) string {
 
 type SQLCommonStore struct {
 	conn    *sqlx.DB
-	tx      *sql.Tx
+	tx      *sqlx.Tx
 	txDepth int
 }
 
@@ -31,14 +31,14 @@ func (s *SQLCommonStore) Begin() error {
 	return err
 }
 
-func (s *SQLCommonStore) BeginTx() (*sql.Tx, error) {
+func (s *SQLCommonStore) BeginTx() (*sqlx.Tx, error) {
 	if s.tx != nil {
 		s.txDepth += 1
 		//log.Printf("Returning existing transaction: depth=%d\n", s.txDepth)
 		return s.tx, nil
 	}
 	//log.Printf("new transaction\n")
-	tx, err := s.conn.Begin()
+	tx, err := s.conn.Beginx()
 	if err != nil {
 		return tx, err
 	}
