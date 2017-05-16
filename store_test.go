@@ -203,6 +203,9 @@ func BenchmarkUpdatePg(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		store.Update(aggregated)
+		_, err := store.Update(aggregated)
+		if err != nil {
+			b.Fatalf("store.Update failed: %s", err)
+		}
 	}
 }
