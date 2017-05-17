@@ -1,6 +1,10 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -20,6 +24,10 @@ CREATE TABLE IF NOT EXISTS tuples (
 	last timestamp,
 	PRIMARY KEY (query, type, answer)
 ) ;
+CREATE INDEX tuples_query ON tuples(query varchar_pattern_ops);
+CREATE INDEX tuples_answer ON tuples(answer varchar_pattern_ops);
+-- CREATE INDEX tuples_first ON tuples(first);
+-- CREATE INDEX tuples_last ON tuples(last);
 
 CREATE TABLE IF NOT EXISTS individual (
 	which char(1),
@@ -29,6 +37,10 @@ CREATE TABLE IF NOT EXISTS individual (
 	last timestamp,
 	PRIMARY KEY (which, value)
 );
+CREATE INDEX individual_value ON individual(value varchar_pattern_ops);
+-- CREATE INDEX individual_first ON individual(first);
+-- CREATE INDEX individual_last ON individual(last);
+
 CREATE TABLE IF NOT EXISTS filenames (
 	filename text PRIMARY KEY UNIQUE NOT NULL,
 	time timestamp DEFAULT now(),
@@ -41,7 +53,7 @@ CREATE TABLE IF NOT EXISTS filenames (
 	inserted int,
 	updated int
 );
-CREATE OR REPLACE FUNCTION update_individual(w char(1), v text, c bigint, f timestamp,l timestamp) RETURNS CHAR(1) AS
+CREATE OR REPLACE FUNCTION update_individual(w char(1), v text, c integer,f timestamp,l timestamp) RETURNS CHAR(1) AS
 $$
 BEGIN
     LOOP
@@ -68,7 +80,7 @@ $$
 LANGUAGE plpgsql;
 
 
-CREATE OR REPLACE FUNCTION update_tuples(q text, ty text, a text, tt integer, c bigint, f timestamp,l timestamp) RETURNS CHAR(1) AS
+CREATE OR REPLACE FUNCTION update_tuples(q text, ty text, a text, tt integer, c integer ,f timestamp,l timestamp) RETURNS CHAR(1) AS
 $$
 BEGIN
     LOOP
@@ -94,80 +106,7 @@ BEGIN
 END;
 $$
 LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION load_tuples(OUT inserted bigint, OUT updated bigint) AS $$
-DECLARE
-    rec RECORD;
-    upsert_query text;
-    result char;
-BEGIN
-    inserted = 0;
-    updated = 0;
-    upsert_query := 'select update_tuples($1, $2, $3, $4, $5, $6, $7)';
-    FOR rec IN SELECT query, type, answer, count, ttl, first, last FROM tuples_staging
-    LOOP
-        execute upsert_query into result USING rec.query, rec.type, rec.answer, rec.ttl, rec.count, to_timestamp(rec.first)::timestamp, to_timestamp(rec.last)::timestamp;
-        IF result = 'I' THEN
-            inserted = inserted + 1;
-        ELSE
-            updated = updated + 1;
-        END IF;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION load_individual(OUT inserted bigint, OUT updated bigint) AS $$
-DECLARE
-    rec RECORD;
-    upsert_query text;
-    result char;
-BEGIN
-    inserted = 0;
-    updated = 0;
-    upsert_query := 'select update_individual($1, $2, $3, $4, $5)';
-    FOR rec IN SELECT which, value, count, first, last FROM individual_staging
-    LOOP
-        execute upsert_query into result USING rec.which, rec.value, rec.count, to_timestamp(rec.first)::timestamp, to_timestamp(rec.last)::timestamp;
-        IF result = 'I' THEN
-            inserted = inserted + 1;
-        ELSE
-            updated = updated + 1;
-        END IF;
-    END LOOP;
-END;
-$$ LANGUAGE plpgsql;
 `
-
-var x = `
-
-CREATE INDEX tuples_query ON tuples(query varchar_pattern_ops);
-CREATE INDEX tuples_answer ON tuples(answer varchar_pattern_ops);
--- CREATE INDEX tuples_first ON tuples(first);
--- CREATE INDEX tuples_last ON tuples(last);
-CREATE INDEX individual_value ON individual(value varchar_pattern_ops);
--- CREATE INDEX individual_first ON individual(first);
--- CREATE INDEX individual_last ON individual(last);
-`
-
-const pgschemaTempTables = `
-DROP TABLE IF EXISTS individual_staging;
-CREATE TEMPORARY TABLE individual_staging (
-	which char(1),
-	value text,
-	count bigint,
-	first double precision,
-	last double precision
-);
-DROP TABLE IF EXISTS tuples_staging;
-CREATE TEMPORARY TABLE tuples_staging (
-	query text,
-	type text,
-	answer text,
-	count bigint,
-	ttl integer,
-	first double precision,
-	last double precision
-);`
 
 type PGStore struct {
 	conn *sqlx.DB
@@ -199,81 +138,109 @@ func (s *PGStore) Init() error {
 	return err
 }
 
+func genFullBatchSelect(tmpl string, batchSize int) string {
+	var queries []string
+	numParams := strings.Count(tmpl, "$")
+	arg := 1
+	for i := 0; i < batchSize; i++ {
+		var args []interface{}
+		for p := 0; p < numParams; p++ {
+			args = append(args, arg)
+			arg++
+		}
+		queries = append(queries, fmt.Sprintf(tmpl, args...))
+	}
+	fullq := fmt.Sprintf("SELECT %s", strings.Join(queries, " || "))
+	return fullq
+}
+
+var BATCHSIZE = 200
+
 func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
-	var resultT UpdateResult
-	var resultI UpdateResult
 	start := time.Now()
 
 	tx, err := s.BeginTx()
 	if err != nil {
 		return result, err
 	}
-	//Setup
-	_, err = tx.Exec(pgschemaTempTables)
+	//Setup the 2 different prepared statements
+	updateTupleTmpl := "update_tuples($%d, $%d, $%d, $%d, $%d, to_timestamp($%d)::timestamp, to_timestamp($%d)::timestamp)"
+	updateTupleBatch, err := tx.Prepare(genFullBatchSelect(updateTupleTmpl, BATCHSIZE))
 	if err != nil {
 		return result, err
 	}
+	defer updateTupleBatch.Close()
 
-	//Update tuples
-	stmt, err := tx.Prepare(pq.CopyIn("tuples_staging", "query", "type", "answer", "count", "ttl", "first", "last"))
+	updateIndividualTmpl := "update_individual($%d, $%d, $%d, to_timestamp($%d)::timestamp, to_timestamp($%d)::timestamp)"
+	updateIndividualeBatch, err := tx.Prepare(genFullBatchSelect(updateIndividualTmpl, BATCHSIZE))
 	if err != nil {
 		return result, err
 	}
+	defer updateIndividualeBatch.Close()
 
-	for _, q := range ar.Tuples {
-		query := Reverse(q.query)
-		_, err = stmt.Exec(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+	var arguments []interface{}
+	batchCounter := 0
+
+	runBatch := func(tmpl string, preparedBatch *sql.Stmt, arguments []interface{}, batchSize int) {
+		if batchSize == 0 {
+			return
+		}
+		var stmt *sql.Stmt
+		if batchSize == BATCHSIZE {
+			stmt = preparedBatch
+		} else {
+			stmt, err = tx.Prepare(genFullBatchSelect(tmpl, batchSize))
+			defer stmt.Close()
+		}
+		res, err := stmt.Query(arguments...)
+		//log.Printf("Fullq is: %s", fullq)
+		//log.Printf("Arguments is: %#v", arguments)
 		if err != nil {
-			return result, err
+			log.Fatal(err)
+		}
+		res.Next()
+		var update_result string
+		res.Scan(&update_result)
+		res.Close()
+		for _, ch := range update_result {
+			if ch == 'I' {
+				result.Inserted++
+			} else {
+				result.Updated++
+			}
 		}
 	}
-	_, err = stmt.Exec()
-	if err != nil {
-		return result, err
-	}
 
-	err = stmt.Close()
-	if err != nil {
-		return result, err
+	// Ok, now let's update stuff
+	for _, q := range ar.Tuples {
+		//Update the tuples table
+		query := Reverse(q.query)
+		arguments = append(arguments, query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+		batchCounter++
+		if batchCounter == BATCHSIZE {
+			runBatch(updateTupleTmpl, updateTupleBatch, arguments, batchCounter)
+			arguments = arguments[:0]
+			batchCounter = 0
+		}
 	}
-	err = tx.QueryRowx("SELECT inserted, updated from load_tuples()").StructScan(&resultT)
-	if err != nil {
-		return result, err
-	}
-
-	//Update individual
-	stmt, err = tx.Prepare(pq.CopyIn("individual_staging", "which", "value", "count", "first", "last"))
-	if err != nil {
-		return result, err
-	}
-
+	runBatch(updateTupleTmpl, updateTupleBatch, arguments, batchCounter)
+	arguments = arguments[:0]
+	batchCounter = 0
 	for _, q := range ar.Individual {
 		value := q.value
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		_, err = stmt.Exec(q.which, value, q.count, q.first, q.last)
-		if err != nil {
-			return result, err
+		arguments = append(arguments, q.which, value, q.count, q.first, q.last)
+		batchCounter++
+		if batchCounter == BATCHSIZE {
+			runBatch(updateIndividualTmpl, updateIndividualeBatch, arguments, batchCounter)
+			arguments = arguments[:0]
+			batchCounter = 0
 		}
 	}
-	_, err = stmt.Exec()
-	if err != nil {
-		return result, err
-	}
-
-	err = stmt.Close()
-	if err != nil {
-		return result, err
-	}
-	err = tx.QueryRowx("SELECT inserted, updated from load_individual()").StructScan(&resultI)
-	if err != nil {
-		return result, err
-	}
-
-	result.Inserted = resultT.Inserted + resultI.Inserted
-	result.Updated = resultT.Updated + resultI.Updated
+	runBatch(updateIndividualTmpl, updateIndividualeBatch, arguments, batchCounter)
 	result.Duration = time.Since(start)
 	return result, s.Commit()
 }
