@@ -191,16 +191,17 @@ func BenchmarkUpdateSQLite(b *testing.B) {
 }
 
 func BenchmarkUpdatePg(b *testing.B) {
+	store, err := NewStore("postgresql", pgTestUrl)
+	if err != nil {
+		b.Fatalf("NewStore failed: %s", err)
+	}
+
 	aggregator := NewDNSAggregator()
-	err := aggregate(aggregator, "big.log")
+	err = aggregate(aggregator, "big.log.gz")
 	if err != nil {
 		log.Fatal(err)
 	}
 	aggregated := aggregator.GetResult()
-	store, err := NewStore("postgresql", pgTestUrl)
-	if err != nil {
-		return
-	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := store.Update(aggregated)
