@@ -154,7 +154,8 @@ var DeleteOldCmd = &cobra.Command{
 	Short: "delete old records",
 	Run: func(cmd *cobra.Command, args []string) {
 		mystore := getStore()
-		rows, err := mystore.DeleteOld(365)
+		days := viper.GetInt("deleteold.days")
+		rows, err := mystore.DeleteOld(int64(days))
 		if err != nil {
 			log.Fatal(err)
 		}
