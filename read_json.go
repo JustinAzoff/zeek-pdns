@@ -25,6 +25,7 @@ func (r *JSONRecord) GetStringList(field string) []string {
 	var strings []string
 	jsonparser.ArrayEach(r.line, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		strings = append(strings, string(value))
+		r.err = err
 	}, field)
 	return strings
 }
