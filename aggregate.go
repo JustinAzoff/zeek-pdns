@@ -214,7 +214,11 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 	if err != nil {
 		return err
 	}
-	br := NewBroAsciiReader(f)
+	defer f.Close()
+	br, err := NewBroReader(f)
+	if err != nil {
+		return err
+	}
 
 	for {
 		rec, err := br.Next()
@@ -224,17 +228,14 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		if rec == nil {
 			break
 		}
-
 		ts := rec.GetFloat("ts")
 		query := rec.GetString("query")
 		qtype_name := rec.GetString("qtype_name")
-		answers_raw := rec.GetString("answers")
-		ttls_raw := rec.GetString("TTLs")
-		if rec.err != nil {
-			return err
+		answers := rec.GetStringList("answers")
+		ttls := rec.GetStringList("TTLs")
+		if rec.Error() != nil {
+			return rec.Error()
 		}
-		answers := strings.Split(answers_raw, ",")
-		ttls := strings.Split(ttls_raw, ",")
 		dns_record := DNSRecord{
 			ts:      ts,
 			query:   query,
