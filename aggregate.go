@@ -207,7 +207,6 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 		}
 	}
 	return
-	return
 }
 
 func aggregate(aggregator *DNSAggregator, fn string) error {
@@ -216,8 +215,6 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		return err
 	}
 	br := NewBroAsciiReader(f)
-
-	var answers_field, query_field, qtype_name_field, ts_field, ttl_field int
 
 	for {
 		rec, err := br.Next()
@@ -228,23 +225,11 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 			break
 		}
 
-		if br.HeadersChanged() {
-			ts_field = rec.GetFieldIndex("ts")
-			answers_field = rec.GetFieldIndex("answers")
-			query_field = rec.GetFieldIndex("query")
-			qtype_name_field = rec.GetFieldIndex("qtype_name")
-			ttl_field = rec.GetFieldIndex("TTLs")
-			br.HandledHeaders()
-			if rec.err != nil {
-				return err
-			}
-		}
-
-		ts := rec.GetFloatByIndex(ts_field)
-		query := rec.GetStringByIndex(query_field)
-		qtype_name := rec.GetStringByIndex(qtype_name_field)
-		answers_raw := rec.GetStringByIndex(answers_field)
-		ttls_raw := rec.GetStringByIndex(ttl_field)
+		ts := rec.GetFloatByField("ts")
+		query := rec.GetStringByField("query")
+		qtype_name := rec.GetStringByField("qtype_name")
+		answers_raw := rec.GetStringByField("answers")
+		ttls_raw := rec.GetStringByField("TTLs")
 		if rec.err != nil {
 			return err
 		}
