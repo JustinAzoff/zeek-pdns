@@ -80,6 +80,9 @@ func NewDNSAggregator() *DNSAggregator {
 		start:   time.Now(),
 	}
 }
+func (d *DNSAggregator) SkipRecord() {
+	d.skippedRecords++
+}
 
 func (d *DNSAggregator) AddRecord(r DNSRecord) {
 	if len(r.query) > MAX_SANE_VALUE_LEN {
@@ -236,6 +239,7 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		if rec.Error() != nil {
 			if rec.IsMissingFieldError() {
 				log.Printf("Skipping record with missing fields: %s", rec)
+				aggregator.SkipRecord()
 				continue
 			} else {
 				return rec.Error()
