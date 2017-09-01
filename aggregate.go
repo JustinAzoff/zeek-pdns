@@ -234,7 +234,12 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		answers := rec.GetStringList("answers")
 		ttls := rec.GetStringList("TTLs")
 		if rec.Error() != nil {
-			return rec.Error()
+			if rec.IsMissingFieldError() {
+				log.Printf("Skipping record with missing fields: %s", rec)
+				continue
+			} else {
+				return rec.Error()
+			}
 		}
 		dns_record := DNSRecord{
 			ts:      ts,

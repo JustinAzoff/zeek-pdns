@@ -42,6 +42,10 @@ func (r *JSONRecord) GetFloat(field string) float64 {
 	return val
 }
 
+func (r *JSONRecord) IsMissingFieldError() bool {
+	return r.err == jsonparser.KeyPathNotFoundError
+}
+
 func (r *JSONRecord) Error() error {
 	if r.err != nil {
 		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))

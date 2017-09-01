@@ -16,6 +16,7 @@ type Record interface {
 	GetStringList(string) []string
 	GetFloat(string) float64
 	Error() error
+	IsMissingFieldError() bool
 }
 
 func NewBroReader(r io.Reader) (Reader, error) {

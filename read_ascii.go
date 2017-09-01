@@ -86,6 +86,10 @@ func (r *ASCIIRecord) GetFloatByIndex(index int) float64 {
 	}
 	return fl
 }
+func (r *ASCIIRecord) IsMissingFieldError() bool {
+	//TODO: handle here or jsut skip in Next?
+	return false
+}
 func (r *ASCIIRecord) Error() error {
 	if r.err != nil {
 		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))
