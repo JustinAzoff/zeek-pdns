@@ -8,6 +8,8 @@ import (
 	"log"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 func grab_value(line string) string {
@@ -41,6 +43,10 @@ type ASCIIRecord struct {
 	cols   *[]string
 	fields *map[string]int
 	err    error
+}
+
+func (r *ASCIIRecord) String() string {
+	return *r.line
 }
 
 func (r *ASCIIRecord) GetString(field string) string {
@@ -81,7 +87,10 @@ func (r *ASCIIRecord) GetFloatByIndex(index int) float64 {
 	return fl
 }
 func (r *ASCIIRecord) Error() error {
-	return r.err
+	if r.err != nil {
+		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))
+	}
+	return nil
 }
 
 func (r *ASCIIRecord) GetFieldIndex(field string) int {

@@ -11,6 +11,7 @@ type Reader interface {
 }
 
 type Record interface {
+	String() string
 	GetString(string) string
 	GetStringList(string) []string
 	GetFloat(string) float64

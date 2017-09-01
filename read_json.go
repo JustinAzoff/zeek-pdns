@@ -2,9 +2,12 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/buger/jsonparser"
+	"github.com/pkg/errors"
 )
 
 type BroJSONReader struct {
@@ -14,6 +17,10 @@ type BroJSONReader struct {
 type JSONRecord struct {
 	line []byte
 	err  error
+}
+
+func (r *JSONRecord) String() string {
+	return strings.Trim(string(r.line), "\n")
 }
 
 func (r *JSONRecord) GetString(field string) string {
@@ -36,7 +43,10 @@ func (r *JSONRecord) GetFloat(field string) float64 {
 }
 
 func (r *JSONRecord) Error() error {
-	return r.err
+	if r.err != nil {
+		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))
+	}
+	return nil
 }
 
 func NewBroJSONReader(r *bufio.Reader) *BroJSONReader {
