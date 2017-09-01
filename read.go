@@ -43,7 +43,7 @@ type Record struct {
 	err    error
 }
 
-func (r *Record) GetStringByField(field string) string {
+func (r *Record) GetString(field string) string {
 	idx, ok := (*r.fields)[field]
 	if !ok {
 		r.err = fmt.Errorf("Invalid field %s", field)
@@ -54,7 +54,7 @@ func (r *Record) GetStringByField(field string) string {
 func (r *Record) GetStringByIndex(index int) string {
 	return (*r.cols)[index]
 }
-func (r *Record) GetFloatByField(field string) float64 {
+func (r *Record) GetFloat(field string) float64 {
 	idx, ok := (*r.fields)[field]
 	if !ok {
 		r.err = fmt.Errorf("Invalid field %s", field)

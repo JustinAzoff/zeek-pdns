@@ -225,11 +225,11 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 			break
 		}
 
-		ts := rec.GetFloatByField("ts")
-		query := rec.GetStringByField("query")
-		qtype_name := rec.GetStringByField("qtype_name")
-		answers_raw := rec.GetStringByField("answers")
-		ttls_raw := rec.GetStringByField("TTLs")
+		ts := rec.GetFloat("ts")
+		query := rec.GetString("query")
+		qtype_name := rec.GetString("qtype_name")
+		answers_raw := rec.GetString("answers")
+		ttls_raw := rec.GetString("TTLs")
 		if rec.err != nil {
 			return err
 		}
