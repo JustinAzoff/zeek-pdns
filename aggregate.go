@@ -80,6 +80,9 @@ func NewDNSAggregator() *DNSAggregator {
 		start:   time.Now(),
 	}
 }
+func (d *DNSAggregator) SkipRecord() {
+	d.skippedRecords++
+}
 
 func (d *DNSAggregator) AddRecord(r DNSRecord) {
 	if len(r.query) > MAX_SANE_VALUE_LEN {
@@ -207,7 +210,6 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 		}
 	}
 	return
-	return
 }
 
 func aggregate(aggregator *DNSAggregator, fn string) error {
@@ -215,9 +217,11 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 	if err != nil {
 		return err
 	}
-	br := NewBroAsciiReader(f)
-
-	var answers_field, query_field, qtype_name_field, ts_field, ttl_field int
+	defer f.Close()
+	br, err := NewBroReader(f)
+	if err != nil {
+		return err
+	}
 
 	for {
 		rec, err := br.Next()
@@ -227,29 +231,20 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		if rec == nil {
 			break
 		}
-
-		if br.HeadersChanged() {
-			ts_field = rec.GetFieldIndex("ts")
-			answers_field = rec.GetFieldIndex("answers")
-			query_field = rec.GetFieldIndex("query")
-			qtype_name_field = rec.GetFieldIndex("qtype_name")
-			ttl_field = rec.GetFieldIndex("TTLs")
-			br.HandledHeaders()
-			if rec.err != nil {
-				return err
+		ts := rec.GetFloat("ts")
+		query := rec.GetString("query")
+		qtype_name := rec.GetString("qtype_name")
+		answers := rec.GetStringList("answers")
+		ttls := rec.GetStringList("TTLs")
+		if rec.Error() != nil {
+			if rec.IsMissingFieldError() {
+				log.Printf("Skipping record with missing fields: %s", rec)
+				aggregator.SkipRecord()
+				continue
+			} else {
+				return rec.Error()
 			}
 		}
-
-		ts := rec.GetFloatByIndex(ts_field)
-		query := rec.GetStringByIndex(query_field)
-		qtype_name := rec.GetStringByIndex(qtype_name_field)
-		answers_raw := rec.GetStringByIndex(answers_field)
-		ttls_raw := rec.GetStringByIndex(ttl_field)
-		if rec.err != nil {
-			return err
-		}
-		answers := strings.Split(answers_raw, ",")
-		ttls := strings.Split(ttls_raw, ",")
 		dns_record := DNSRecord{
 			ts:      ts,
 			query:   query,
