@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/kshvakov/clickhouse"
 	"github.com/pkg/errors"
+	clickhouse "github.com/roistat/go-clickhouse"
 )
 
 var chschema = []string{
@@ -62,8 +63,18 @@ CREATE TABLE tuples_temp (
     count UInt64
 ) ENGINE = Log`
 
+const individual_temp_stmt = `
+CREATE TABLE individual_temp (
+    which Enum8('Q'=0, 'A'=1),
+    value String,
+    first DateTime,
+    last DateTime,
+    count UInt64
+) ENGINE = Log`
+
 type CHStore struct {
 	conn *sqlx.DB
+	http *clickhouse.Conn
 }
 
 func NewCHStore(uri string) (Store, error) {
@@ -71,16 +82,30 @@ func NewCHStore(uri string) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CHStore{conn: conn}, nil
+
+	t := clickhouse.NewHttpTransport()
+	t.Timeout = time.Second * 5
+	http := clickhouse.NewConn("localhost:8123/default", t) //FIXME
+	err = conn.Ping()
+	if err != nil {
+		return nil, err
+	}
+	return &CHStore{conn: conn, http: http}, nil
 }
 
 func (s *CHStore) Close() error {
 	return s.Close()
 }
 
+func (s *CHStore) Exec(query string) error {
+	q := clickhouse.NewQuery(query)
+	err := q.Exec(s.http)
+	return err
+}
+
 func (s *CHStore) Init() error {
 	for _, stmt := range chschema {
-		_, err := s.conn.Exec(stmt)
+		err := s.Exec(stmt)
 		if err != nil {
 			return err
 		}
@@ -90,7 +115,7 @@ func (s *CHStore) Init() error {
 func (s *CHStore) Clear() error {
 	stmts := []string{"DELETE FROM filenames", "DELETE FROM individual", "DELETE FROM tuples"}
 	for _, stmt := range stmts {
-		_, err := s.conn.Exec(stmt)
+		err := s.Exec(stmt)
 		if err != nil {
 			return err
 		}
@@ -114,46 +139,67 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
 	start := time.Now()
 
-	s.conn.Exec("DROP TABLE tuples_temp")
-	_, err := s.conn.Exec(tuples_temp_stmt)
+	s.Exec("DROP TABLE tuples_temp")
+	s.Exec("DROP TABLE individual_temp")
+
+	err := s.Exec(tuples_temp_stmt)
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update failed to create temporary tuples table")
 	}
+	err = s.Exec(individual_temp_stmt)
+	if err != nil {
+		return result, errors.Wrap(err, "CHStore.Update failed to create temporary individual table")
+	}
 	defer func() {
-		s.conn.Exec("DROP TABLE tuples_temp")
+		//s.conn.Exec("DROP TABLE tuples_temp")
+		//s.conn.Exec("DROP TABLE individual_temp")
 	}()
 
-	tx, err := s.conn.Begin()
-	if err != nil {
-		return result, err
-	}
+	var tupleRows []clickhouse.Row
 
-	stmt_tuples, err := tx.Prepare("INSERT INTO tuples_temp (query, type, answer, ttl, first, last, count) VALUES (?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		return result, err
-	}
 	for _, q := range ar.Tuples {
 		query := Reverse(q.query)
 		ttl, err := strconv.ParseInt(q.ttl, 10, 64)
 		if err != nil {
 			return result, errors.Wrap(err, "CHStore.Update failed")
 		}
-		if _, err := stmt_tuples.Exec(query, q.qtype, q.answer, ttl, int64(q.first), int64(q.last), int64(q.count)); err != nil {
-			return result, errors.Wrap(err, "CHStore.Update failed")
+		tupleRows = append(tupleRows, clickhouse.Row{query, q.qtype, q.answer, ttl, int64(q.first), int64(q.last), int64(q.count)})
+	}
+	q, err := clickhouse.BuildMultiInsert("tuples_temp", clickhouse.Columns{"query", "type", "answer", "ttl", "first", "last", "count"}, tupleRows)
+	if err != nil {
+		return result, errors.Wrap(err, "CHStore.Update tuples failed")
+	}
+	err = q.Exec(s.http)
+	if err != nil {
+		return result, errors.Wrap(err, "CHStore.Update tuples exec failed")
+	}
+
+	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), countState(count) from tuples_temp group by query, type, answer`)
+	if err != nil {
+		return result, errors.Wrap(err, "CHStore.Update failed to insert into tuples")
+	}
+
+	var individualRows []clickhouse.Row
+	for _, q := range ar.Individual {
+		value := q.value
+		if q.which == "Q" {
+			value = Reverse(value)
 		}
-
+		individualRows = append(individualRows, clickhouse.Row{q.which, value, int64(q.first), int64(q.last), int64(q.count)})
 	}
-
-	err = tx.Commit()
+	q, err = clickhouse.BuildMultiInsert("individual_temp", clickhouse.Columns{"which", "value", "first", "last", "count"}, individualRows)
 	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update failed")
+		return result, errors.Wrap(err, "CHStore.Update individual failed")
 	}
-
-	_, err = s.conn.Query(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), countState(count) from tuples_temp group by query, type, answer`)
+	err = q.Exec(s.http)
 	if err != nil {
-		//return result, errors.Wrap(err, "CHStore.Update failed to insert into tuples")
+		return result, errors.Wrap(err, "CHStore.Update individual exec failed")
 	}
 
+	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value, minState(first), maxState(last), countState(count) from individual_temp group by which, value`)
+	if err != nil {
+		return result, errors.Wrap(err, "CHStore.Update failed to insert into individual")
+	}
 	result.Duration = time.Since(start)
 	return result, nil
 }
