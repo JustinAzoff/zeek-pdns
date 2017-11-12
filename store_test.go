@@ -8,6 +8,7 @@ import (
 )
 
 var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
+var chTestUrl = "clickhouse://localhost:9000/default?debug=true"
 
 type storeTest struct {
 	storetype string
@@ -105,19 +106,32 @@ func doExampleUpdating(s Store, forward bool) {
 
 }
 
-func TestLogIndexedSqlite(t *testing.T) {
+func testLogIndexedSqlite(t *testing.T) {
 	store, err := NewStore("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
 	doTestLogIndexed(t, store)
 }
-func TestLogIndexedPg(t *testing.T) {
+func testLogIndexedPg(t *testing.T) {
 	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
 		t.Fatal(err)
 	}
 	doTestLogIndexed(t, store)
+}
+func testLogIndexedCh(t *testing.T) {
+	store, err := NewStore("clickhouse", chTestUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doTestLogIndexed(t, store)
+}
+
+func TestLogIndexed(t *testing.T) {
+	t.Run("sqlite", testLogIndexedSqlite)
+	t.Run("postgresql", testLogIndexedPg)
+	t.Run("clickhouse", testLogIndexedCh)
 }
 
 func ExampleUpdatingSqliteForward() {

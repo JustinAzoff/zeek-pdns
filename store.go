@@ -86,6 +86,7 @@ type UpdateResult struct {
 }
 
 var storeFactories = map[string]func(string) (Store, error){
+	"clickhouse": NewCHStore,
 	"sqlite":     NewSQLiteStore,
 	"postgresql": NewPGStore,
 }
