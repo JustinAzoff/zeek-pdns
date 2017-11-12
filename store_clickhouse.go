@@ -249,15 +249,14 @@ func (s *CHStore) FindTuples(query string) (tupleResults, error) {
 func (s *CHStore) LikeTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT * FROM tuples WHERE query like ? OR answer like ? ORDER BY query, answer", rquery+"%", query+"%")
+	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from tuples WHERE query like ? OR answer like ? group by query, type, answer ORDER BY query, answer", rquery+"%", query+"%")
 	reverseQuery(tr)
 	return tr, err
 }
 func (s *CHStore) FindIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from individual
-	WHERE (which='A' AND value = ?) OR (which='Q' AND value = ?) group by which, value ORDER BY value`, value, rvalue)
+	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from individual WHERE (which='A' AND value = ?) OR (which='Q' AND value = ?) group by which, value ORDER BY value`, value, rvalue)
 	reverseValue(tr)
 	return tr, err
 }
@@ -265,7 +264,7 @@ func (s *CHStore) FindIndividual(value string) (individualResults, error) {
 func (s *CHStore) LikeIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, "SELECT * FROM individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?) ORDER BY value", value+"%", rvalue+"%")
+	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?) group by which, value ORDER BY value`, value+"%", rvalue+"%")
 	reverseValue(tr)
 	return tr, err
 }
