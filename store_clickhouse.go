@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS tuples (
     ttl AggregateFunction(anyLast, UInt16),
     first AggregateFunction(min, DateTime),
     last AggregateFunction(max, DateTime),
-    count AggregateFunction(count, UInt64)
+    count AggregateFunction(sum, UInt64)
   ) ENGINE = AggregatingMergeTree(whatever, (query, answer), 8192);
 `,
 
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS individual (
     value String,
     first AggregateFunction(min, DateTime),
     last AggregateFunction(max, DateTime),
-    count AggregateFunction(count, UInt64)
+    count AggregateFunction(sum, UInt64)
   ) ENGINE = AggregatingMergeTree(whatever, (which, value), 8192);
 `,
 	`
@@ -176,7 +176,7 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 		return result, errors.Wrap(err, "CHStore.Update tuples exec failed")
 	}
 
-	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), countState(count) from tuples_temp group by query, type, answer`)
+	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), sumState(count) from tuples_temp group by query, type, answer`)
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update failed to insert into tuples")
 	}
@@ -198,7 +198,7 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 		return result, errors.Wrap(err, "CHStore.Update individual exec failed")
 	}
 
-	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value, minState(first), maxState(last), countState(count) from individual_temp group by which, value`)
+	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value, minState(first), maxState(last), sumState(count) from individual_temp group by which, value`)
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update failed to insert into individual")
 	}
@@ -243,7 +243,7 @@ func (s *CHStore) FindQueryTuples(query string) (tupleResults, error) {
 func (s *CHStore) FindTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from tuples WHERE query = ? OR answer = ? group by query, type, answer ORDER BY query, answer", rquery, query)
+	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query = ? OR answer = ? group by query, type, answer ORDER BY query, answer", rquery, query)
 	reverseQuery(tr)
 
 	return tr, err
@@ -251,14 +251,14 @@ func (s *CHStore) FindTuples(query string) (tupleResults, error) {
 func (s *CHStore) LikeTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from tuples WHERE query like ? OR answer like ? group by query, type, answer ORDER BY query, answer", rquery+"%", query+"%")
+	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query like ? OR answer like ? group by query, type, answer ORDER BY query, answer", rquery+"%", query+"%")
 	reverseQuery(tr)
 	return tr, err
 }
 func (s *CHStore) FindIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from individual WHERE (which='A' AND value = ?) OR (which='Q' AND value = ?) group by which, value ORDER BY value`, value, rvalue)
+	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from individual WHERE (which='A' AND value = ?) OR (which='Q' AND value = ?) group by which, value ORDER BY value`, value, rvalue)
 	reverseValue(tr)
 	return tr, err
 }
@@ -266,7 +266,7 @@ func (s *CHStore) FindIndividual(value string) (individualResults, error) {
 func (s *CHStore) LikeIndividual(value string) (individualResults, error) {
 	rvalue := Reverse(value)
 	tr := []individualResult{}
-	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, countMerge(count) as count from individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?) group by which, value ORDER BY value`, value+"%", rvalue+"%")
+	err := s.conn.Select(&tr, `SELECT which, value, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from individual WHERE (which='A' AND value like ?) OR (which='Q' AND value like ?) group by which, value ORDER BY value`, value+"%", rvalue+"%")
 	reverseValue(tr)
 	return tr, err
 }
