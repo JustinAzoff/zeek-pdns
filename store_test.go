@@ -8,7 +8,7 @@ import (
 )
 
 var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
-var chTestUrl = "clickhouse://localhost:9000/default?debug=true"
+var chTestUrl = "clickhouse://localhost:9000/default"
 
 type storeTest struct {
 	storetype string
@@ -192,6 +192,21 @@ func ExampleUpdatingPgReverse() {
 	//www.reddit.com	Q	2	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
 	//Tuple records: 1
 	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
+}
+
+func ExampleUpdatingClickhouseForward() {
+	store, err := NewStore("clickhouse", chTestUrl)
+	if err != nil {
+		return
+	}
+	doExampleUpdating(store, true)
+	// Output:
+	//A: Inserted=31 Updated=0
+	//B: Inserted=0 Updated=31
+	//Individual records: 1
+	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+	//Tuple records: 1
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {
