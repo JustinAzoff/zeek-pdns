@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -127,7 +128,8 @@ func (s *CHStore) Begin() error {
 	return fmt.Errorf("clickhouse doesn't support transactions")
 }
 func (s *CHStore) Commit() error {
-	return fmt.Errorf("clickhouse doesn't support transactions")
+	log.Printf("clickhouse doesn't support transactions")
+	return nil
 }
 
 //DeleteOld Deletes records that haven't been seen in DAYS, returns the total records deleted
