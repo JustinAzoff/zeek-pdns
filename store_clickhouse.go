@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS tuples (
     first AggregateFunction(min, DateTime),
     last AggregateFunction(max, DateTime),
     count AggregateFunction(sum, UInt64)
-  ) ENGINE = AggregatingMergeTree(whatever, (query, answer), 8192);
+  ) ENGINE = AggregatingMergeTree(whatever, (query, type, answer), 8192);
 `,
 
 	`
