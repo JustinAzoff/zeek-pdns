@@ -53,6 +53,7 @@ var IndexCmd = &cobra.Command{
 			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d SkippedRecords=%d Tuples=%d Individual=%d", fn,
 				aggregated.Duration.Seconds(), aggregated.TotalRecords, aggregated.SkippedRecords, len(aggregated.Tuples), len(aggregated.Individual))
 			var emptyStoreResult UpdateResult
+			//TODO: Since clickhouse doesn't do transactions, this should be done last
 			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
 			if err != nil {
 				log.Fatal(err)
