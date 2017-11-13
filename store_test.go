@@ -25,6 +25,11 @@ func init() {
 		pgTestUrl = envUrl
 	}
 	testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
+	envUrl = os.Getenv("CH_TEST_URL")
+	if envUrl != "" {
+		chTestUrl = envUrl
+	}
+	testStores = append(testStores, storeTest{"postgresql", chTestUrl})
 }
 
 func doTestLogIndexed(t *testing.T, s Store) {
@@ -137,6 +142,7 @@ func TestLogIndexed(t *testing.T) {
 func ExampleUpdatingSqliteForward() {
 	store, err := NewStore("sqlite", ":memory:")
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 	doExampleUpdating(store, true)
@@ -152,6 +158,7 @@ func ExampleUpdatingSqliteForward() {
 func ExampleUpdatingSqliteReverse() {
 	store, err := NewStore("sqlite", ":memory:")
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 	doExampleUpdating(store, false)
@@ -167,6 +174,7 @@ func ExampleUpdatingSqliteReverse() {
 func ExampleUpdatingPgForward() {
 	store, err := NewStore("postgresql", pgTestUrl)
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 	doExampleUpdating(store, true)
@@ -197,6 +205,7 @@ func ExampleUpdatingPgReverse() {
 func ExampleUpdatingClickhouseForward() {
 	store, err := NewStore("clickhouse", chTestUrl)
 	if err != nil {
+		fmt.Print(err)
 		return
 	}
 	doExampleUpdating(store, true)
