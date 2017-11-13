@@ -158,7 +158,7 @@ func ExampleResultTupleJSONReader() {
 
 	res := ag.GetResult()
 	sort.Sort(ByTuple(res.Tuples))
-	reader := res.TupleJSONReader()
+	reader := res.TupleJSONReader(false)
 
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -190,7 +190,7 @@ func ExampleResultIndividualJSONReader() {
 
 	res := ag.GetResult()
 	sort.Sort(ByValue(res.Individual))
-	reader := res.IndividualJSONReader()
+	reader := res.IndividualJSONReader(false)
 
 	body, err := ioutil.ReadAll(reader)
 	if err != nil {

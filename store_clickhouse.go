@@ -3,8 +3,11 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
-	"strconv"
+	"net/http"
+	"net/url"
 	"time"
 
 	clickhouse "github.com/ClickHouse/clickhouse-go"
@@ -75,22 +78,32 @@ CREATE TABLE individual_temp (
 type CHStore struct {
 	conn *sqlx.DB
 	http *clickhouse.Conn
+	host string
 }
 
 func NewCHStore(uri string) (Store, error) {
+	url, err := url.Parse(uri)
+	if err != nil {
+		return nil, err
+	}
+
 	conn, err := sqlx.Open("clickhouse", uri)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Ping()
 	if err != nil {
 		return nil, err
 	}
 
 	t := clickhouse.NewHttpTransport()
 	t.Timeout = time.Second * 5
-	http := clickhouse.NewConn("localhost:8123/default", t) //FIXME
-	err = conn.Ping()
-	if err != nil {
-		return nil, err
-	}
-	return &CHStore{conn: conn, http: http}, nil
+	http := clickhouse.NewConn(fmt.Sprintf("%s:8123/default", url.Hostname()), t)
+	return &CHStore{
+		conn: conn,
+		http: http,
+		host: url.Hostname(),
+	}, nil
 }
 
 func (s *CHStore) Close() error {
@@ -136,6 +149,26 @@ func (s *CHStore) DeleteOld(days int64) (int64, error) {
 	return 0, fmt.Errorf("clickhouse doesn't support delete")
 }
 
+func (s *CHStore) SendJSON(table string, r io.Reader) error {
+	timeout := time.Duration(60 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	v := url.Values{}
+	v.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT JSONEachRow", table))
+	qs := v.Encode()
+	u := fmt.Sprintf("http://%s:8123?%s", s.host, qs)
+
+	resp, err := client.Post(u, "application/json", r)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("Clickhouse error: %s", body)
+	}
+	return err
+}
+
 func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
 	start := time.Now()
@@ -156,23 +189,9 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 		//s.conn.Exec("DROP TABLE individual_temp")
 	}()
 
-	var tupleRows []clickhouse.Row
-
-	for _, q := range ar.Tuples {
-		query := Reverse(q.query)
-		ttl, err := strconv.ParseInt(q.ttl, 10, 64)
-		if err != nil {
-			return result, errors.Wrap(err, "CHStore.Update failed")
-		}
-		tupleRows = append(tupleRows, clickhouse.Row{query, q.qtype, q.answer, ttl, int64(q.first), int64(q.last), int64(q.count)})
-	}
-	q, err := clickhouse.BuildMultiInsert("tuples_temp", clickhouse.Columns{"query", "type", "answer", "ttl", "first", "last", "count"}, tupleRows)
+	err = s.SendJSON("tuples_temp", ar.TupleJSONReader(true))
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update tuples failed")
-	}
-	err = q.Exec(s.http)
-	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update tuples exec failed")
 	}
 
 	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), sumState(count) from tuples_temp group by query, type, answer`)
@@ -180,21 +199,9 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 		return result, errors.Wrap(err, "CHStore.Update failed to insert into tuples")
 	}
 
-	var individualRows []clickhouse.Row
-	for _, q := range ar.Individual {
-		value := q.value
-		if q.which == "Q" {
-			value = Reverse(value)
-		}
-		individualRows = append(individualRows, clickhouse.Row{q.which, value, int64(q.first), int64(q.last), int64(q.count)})
-	}
-	q, err = clickhouse.BuildMultiInsert("individual_temp", clickhouse.Columns{"which", "value", "first", "last", "count"}, individualRows)
+	err = s.SendJSON("individual_temp", ar.IndividualJSONReader(true))
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update individual failed")
-	}
-	err = q.Exec(s.http)
-	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update individual exec failed")
 	}
 
 	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value, minState(first), maxState(last), sumState(count) from individual_temp group by which, value`)

@@ -313,30 +313,36 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 }
 
 type JSONTuple struct {
-	Query  string  `json:"query"`
-	Type   string  `json:"type"`
-	Answer string  `json:"answer"`
-	TTL    string  `json:"ttl"`
-	Count  uint    `json:"count"`
-	First  float64 `json:"first"`
-	Last   float64 `json:"last"`
+	Query  string `json:"query"`
+	Type   string `json:"type"`
+	Answer string `json:"answer"`
+	TTL    string `json:"ttl"`
+	Count  uint   `json:"count"`
+	First  uint64 `json:"first"`
+	Last   uint64 `json:"last"`
 }
 
-func (ar *aggregationResult) TupleJSONReader() io.ReadCloser {
+func (ar *aggregationResult) TupleJSONReader(reverseQuery bool) io.ReadCloser {
 	pr, pw := io.Pipe()
 
 	encoder := json.NewEncoder(pw)
 	go func() {
 		defer pw.Close()
+		var q string
 		for _, t := range ar.Tuples {
+			if reverseQuery {
+				q = Reverse(t.query)
+			} else {
+				q = t.query
+			}
 			v := JSONTuple{
-				Query:  t.query,
+				Query:  q,
 				Type:   t.qtype,
 				Answer: t.answer,
 				TTL:    t.ttl,
 				Count:  t.count,
-				First:  t.first,
-				Last:   t.last,
+				First:  uint64(t.first),
+				Last:   uint64(t.last),
 			}
 			err := encoder.Encode(v)
 			if err != nil {
@@ -349,26 +355,32 @@ func (ar *aggregationResult) TupleJSONReader() io.ReadCloser {
 }
 
 type JSONIndividual struct {
-	Value string  `json:"value"`
-	Which string  `json:"which"`
-	Count uint    `json:"count"`
-	First float64 `json:"first"`
-	Last  float64 `json:"last"`
+	Value string `json:"value"`
+	Which string `json:"which"`
+	Count uint   `json:"count"`
+	First uint64 `json:"first"`
+	Last  uint64 `json:"last"`
 }
 
-func (ar *aggregationResult) IndividualJSONReader() io.ReadCloser {
+func (ar *aggregationResult) IndividualJSONReader(reverseQuery bool) io.ReadCloser {
 	pr, pw := io.Pipe()
 
 	encoder := json.NewEncoder(pw)
 	go func() {
 		defer pw.Close()
+		var q string
 		for _, t := range ar.Individual {
+			if t.which == "Q" && reverseQuery {
+				q = Reverse(t.value)
+			} else {
+				q = t.value
+			}
 			v := JSONIndividual{
-				Value: t.value,
+				Value: q,
 				Which: t.which,
 				Count: t.count,
-				First: t.first,
-				Last:  t.last,
+				First: uint64(t.first),
+				Last:  uint64(t.last),
 			}
 			err := encoder.Encode(v)
 			if err != nil {
