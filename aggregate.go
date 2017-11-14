@@ -134,6 +134,9 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 			d.skippedRecords++
 			return
 		}
+		if len(ttl) > 0 && ttl[0] == '-' {
+			ttl = "0"
+		}
 		uquery := uniqueTuple{
 			query:  r.query,
 			answer: answer,
@@ -170,7 +173,6 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 			arec.ttl = ttl
 		}
 	}
-
 }
 
 func (d *DNSAggregator) GetResult() aggregationResult {
@@ -199,7 +201,7 @@ func (d *DNSAggregator) GetResult() aggregationResult {
 }
 
 //timeCompare compares timestamps, doesn't care about subsecond
-func timeCompare(a, b string) int{
+func timeCompare(a, b string) int {
 	a = stripDecimal(a)
 	b = stripDecimal(b)
 
@@ -233,8 +235,6 @@ func timeCompare(a, b string) int{
 		}
 	}
 }
-
-
 
 func (d *DNSAggregator) Merge(other *DNSAggregator) {
 	for q, stat := range other.queries {
