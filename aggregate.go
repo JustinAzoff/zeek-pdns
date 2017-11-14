@@ -54,7 +54,9 @@ type aggregationResult struct {
 	TotalRecords   uint
 	SkippedRecords uint
 	Tuples         []aggregatedTuple
+	TuplesLen      int
 	Individual     []aggregatedIndividual
+	IndividualLen  int
 }
 
 type aggregatedTuple struct {
@@ -190,6 +192,8 @@ func (d *DNSAggregator) GetResult() aggregationResult {
 	result.TotalRecords = d.totalRecords
 	result.SkippedRecords = d.skippedRecords
 	result.Duration = time.Since(d.start)
+	result.TuplesLen = len(result.Tuples)
+	result.IndividualLen = len(result.Individual)
 	return result
 
 }
@@ -310,6 +314,16 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 	}
 
 	return nil
+}
+
+func (ar *aggregationResult) ShallowCopy() aggregationResult {
+	return aggregationResult{
+		Duration:       ar.Duration,
+		TotalRecords:   ar.TotalRecords,
+		SkippedRecords: ar.SkippedRecords,
+		TuplesLen:      ar.TuplesLen,
+		IndividualLen:  ar.IndividualLen,
+	}
 }
 
 type JSONTuple struct {

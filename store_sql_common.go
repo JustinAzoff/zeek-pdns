@@ -90,7 +90,7 @@ func (s *SQLCommonStore) SetLogIndexed(filename string, ar aggregationResult, ur
 	      store_time, inserted, updated)
 	      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`
 	_, err = tx.Exec(q, filename,
-		ar.Duration.Seconds(), ar.TotalRecords, ar.SkippedRecords, len(ar.Tuples), len(ar.Individual),
+		ar.Duration.Seconds(), ar.TotalRecords, ar.SkippedRecords, ar.TuplesLen, ar.IndividualLen,
 		ur.Duration.Seconds(), ur.Inserted, ur.Updated)
 	return err
 }

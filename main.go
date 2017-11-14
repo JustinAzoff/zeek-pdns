@@ -33,6 +33,8 @@ var IndexCmd = &cobra.Command{
 		var didWork bool
 		mystore.Begin()
 		aggregator := NewDNSAggregator()
+		var emptyStoreResult UpdateResult
+		aggMap := make(map[string]aggregationResult)
 		for _, fn := range args {
 			indexed, err := mystore.IsLogIndexed(fn)
 			if err != nil {
@@ -51,13 +53,8 @@ var IndexCmd = &cobra.Command{
 			aggregator.Merge(fileAgg)
 			aggregated := fileAgg.GetResult()
 			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d SkippedRecords=%d Tuples=%d Individual=%d", fn,
-				aggregated.Duration.Seconds(), aggregated.TotalRecords, aggregated.SkippedRecords, len(aggregated.Tuples), len(aggregated.Individual))
-			var emptyStoreResult UpdateResult
-			//TODO: Since clickhouse doesn't do transactions, this should be done last
-			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
-			if err != nil {
-				log.Fatal(err)
-			}
+				aggregated.Duration.Seconds(), aggregated.TotalRecords, aggregated.SkippedRecords, aggregated.TuplesLen, aggregated.IndividualLen)
+			aggMap[fn] = aggregated.ShallowCopy()
 			didWork = true
 		}
 		if !didWork {
@@ -70,6 +67,12 @@ var IndexCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		log.Printf("batch: Store: Duration=%0.1f Inserted=%d Updated=%d", result.Duration.Seconds(), result.Inserted, result.Updated)
+		for fn, aggregated := range aggMap {
+			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 		err = mystore.Commit()
 		if err != nil {
 			log.Fatal(err)
