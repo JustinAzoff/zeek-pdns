@@ -208,6 +208,7 @@ func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 	if err != nil {
 		return result, errors.Wrap(err, "CHStore.Update failed to insert into individual")
 	}
+	result.Updated = len(ar.Tuples) + len(ar.Individual)
 	result.Duration = time.Since(start)
 	return result, nil
 }
