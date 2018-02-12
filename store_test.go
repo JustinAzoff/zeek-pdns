@@ -210,12 +210,12 @@ func ExampleUpdatingClickhouseForward() {
 	}
 	doExampleUpdating(store, true)
 	// Output:
-	//A: Inserted=31 Updated=0
+	//A: Inserted=0 Updated=31
 	//B: Inserted=0 Updated=31
 	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+	//www.reddit.com	Q	2	2016-04-01T00:03:03Z	2016-04-01T21:55:04Z
 	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
+	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03Z	2016-04-01T21:55:04Z
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {

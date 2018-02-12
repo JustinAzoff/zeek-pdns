@@ -250,7 +250,7 @@ func (s *CHStore) FindQueryTuples(query string) (tupleResults, error) {
 func (s *CHStore) FindTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query = ? OR answer = ? group by query, type, answer ORDER BY query, answer", rquery, query)
+	err := s.conn.Select(&tr, "SELECT query, type, answer, anyLastMerge(ttl) as ttl, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query = ? OR answer = ? group by query, type, answer ORDER BY query, answer", rquery, query)
 	reverseQuery(tr)
 
 	return tr, err
@@ -258,7 +258,7 @@ func (s *CHStore) FindTuples(query string) (tupleResults, error) {
 func (s *CHStore) LikeTuples(query string) (tupleResults, error) {
 	tr := []tupleResult{}
 	rquery := Reverse(query)
-	err := s.conn.Select(&tr, "SELECT query, type, answer, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query like ? OR answer like ? group by query, type, answer ORDER BY query, answer", rquery+"%", query+"%")
+	err := s.conn.Select(&tr, "SELECT query, type, answer, anyLastMerge(ttl) as ttl, minMerge(first) as first, maxMerge(last) as last, sumMerge(count) as count from tuples WHERE query like ? OR answer like ? group by query, type, answer ORDER BY query, answer", rquery+"%", query+"%")
 	reverseQuery(tr)
 	return tr, err
 }
