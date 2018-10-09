@@ -9,11 +9,21 @@ import (
 
 var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
 
+type storeTest struct {
+	storetype string
+	uri       string
+}
+
+var testStores = []storeTest{
+	{"sqlite", ":memory:"},
+}
+
 func init() {
 	envUrl := os.Getenv("PG_TEST_URL")
 	if envUrl != "" {
 		pgTestUrl = envUrl
 	}
+	testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
 }
 
 func doTestLogIndexed(t *testing.T, s Store) {
@@ -208,5 +218,35 @@ func BenchmarkUpdatePg(b *testing.B) {
 		if err != nil {
 			b.Fatalf("store.Update failed: %s", err)
 		}
+	}
+}
+
+func testBadFile(t *testing.T, s Store, fn string) error {
+	aggregator := NewDNSAggregator()
+	err := aggregate(aggregator, fn)
+	if err != nil {
+		return err
+	}
+	aggregated := aggregator.GetResult()
+	_, err = s.Update(aggregated)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func TestIndexingBadFiles(t *testing.T) {
+	badFiles := []string{"./test_data/nbtstat.log"}
+	for _, ts := range testStores {
+		t.Run(ts.storetype, func(t *testing.T) {
+			store, err := NewStore(ts.storetype, ts.uri)
+			if err != nil {
+				t.Fatalf("can't create store at %s: %v", ts.uri, err)
+			}
+			for _, fn := range badFiles {
+				t.Run(fn, func(t *testing.T) {
+					testBadFile(t, store, fn)
+				})
+			}
+		})
 	}
 }

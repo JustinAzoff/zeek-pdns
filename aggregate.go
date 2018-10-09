@@ -90,6 +90,7 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 		d.skippedRecords++
 		return
 	}
+	r.query = strings.TrimRight(r.query, "\u0000")
 	d.totalRecords++
 	query_value := uniqueIndividual{value: r.query, which: "Q"}
 
