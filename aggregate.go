@@ -91,6 +91,11 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 		return
 	}
 	r.query = strings.TrimRight(r.query, "\u0000")
+	if strings.ContainsRune(r.query, '\u0000') {
+		log.Printf("Skipping record with null byte in query: %#v\n", r)
+		d.skippedRecords++
+		return
+	}
 	d.totalRecords++
 	query_value := uniqueIndividual{value: r.query, which: "Q"}
 

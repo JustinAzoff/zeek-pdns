@@ -235,7 +235,7 @@ func testBadFile(t *testing.T, s Store, fn string) error {
 	return nil
 }
 func TestIndexingBadFiles(t *testing.T) {
-	badFiles := []string{"./test_data/nbtstat.log"}
+	badFiles := []string{"./test_data/nbtstat.log", "./test_data/garbage.log"}
 	for _, ts := range testStores {
 		t.Run(ts.storetype, func(t *testing.T) {
 			store, err := NewStore(ts.storetype, ts.uri)
