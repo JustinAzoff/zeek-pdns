@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -122,6 +123,13 @@ func (d *DNSAggregator) AddRecord(r DNSRecord) {
 			continue
 		}
 		ttl := stripDecimal(r.ttls[idx])
+		//Validate that a ttl fits in a 32bit int
+		_, err := strconv.ParseInt(ttl, 10, 32)
+		if err != nil {
+			log.Printf("Skipping record with insane ttl: %#v\n", r)
+			d.skippedRecords++
+			return
+		}
 		uquery := uniqueTuple{
 			query:  r.query,
 			answer: answer,
