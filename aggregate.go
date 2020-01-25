@@ -283,7 +283,7 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		if rec == nil {
 			break
 		}
-		ts := rec.GetString("ts")
+		ts := rec.GetTimestamp("ts")
 		query := rec.GetString("query")
 		qtype_name := rec.GetString("qtype_name")
 		answers := rec.GetStringList("answers")

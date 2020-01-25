@@ -70,3 +70,18 @@ func (b *BroJSONReader) Next() (Record, error) {
 	}
 	return &rec, nil
 }
+
+//GetTimestamp tries to get a field that may be a String or a float64
+//Yes, this is terrible, but supporting both timestamps and iso8601 at the same
+//time is tricky
+//TODO: use a struct type that is a string or float and can be lazy evaluated
+//for sorting and for final representation when being upserted
+func (r *JSONRecord) GetTimestamp(field string) string {
+	val, err := jsonparser.GetString(r.line, field)
+	if err == nil {
+		return val
+	}
+	fval, err := jsonparser.GetFloat(r.line, field)
+	r.err = err
+	return fmt.Sprintf("%f", fval)
+}

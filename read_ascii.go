@@ -57,6 +57,9 @@ func (r *ASCIIRecord) GetString(field string) string {
 	}
 	return (*r.cols)[idx]
 }
+func (r *ASCIIRecord) GetTimestamp(field string) string {
+	return r.GetString(field)
+}
 func (r *ASCIIRecord) GetStringList(field string) []string {
 	raw := r.GetString(field)
 	spl := strings.Split(raw, ",")
