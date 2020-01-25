@@ -23,7 +23,7 @@ func stripDecimal(value string) string {
 }
 
 type DNSRecord struct {
-	ts      float64
+	ts      string
 	query   string
 	qtype   string
 	answers []string
@@ -42,8 +42,8 @@ type uniqueIndividual struct {
 
 type queryStat struct {
 	count uint
-	first float64
-	last  float64
+	first string
+	last  string
 	ttl   string
 }
 
@@ -192,6 +192,44 @@ func (d *DNSAggregator) GetResult() aggregationResult {
 
 }
 
+//timeCompare compares timestamps, doesn't care about subsecond
+func timeCompare(a, b string) int{
+	a = stripDecimal(a)
+	b = stripDecimal(b)
+
+	if strings.Contains(a, "-") {
+		//Formatted timestamps are the same length, and can just be
+		//Compared as is
+		if a < b {
+			return -1
+		} else if a > b {
+			return 1
+		} else {
+			return 0
+		}
+	} else {
+		ai, err := strconv.ParseInt(a, 10, 64)
+		if err != nil {
+			log.Printf("Invalid timestamp: %v", a)
+			return 0
+		}
+		bi, err := strconv.ParseInt(b, 10, 64)
+		if err != nil {
+			log.Printf("Invalid timestamp: %v", b)
+			return 0
+		}
+		if ai < bi {
+			return -1
+		} else if ai > bi {
+			return 1
+		} else {
+			return 0
+		}
+	}
+}
+
+
+
 func (d *DNSAggregator) Merge(other *DNSAggregator) {
 	for q, stat := range other.queries {
 		rec := d.queries[q]
@@ -199,10 +237,10 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 			d.queries[q] = stat
 		} else {
 			rec.count += stat.count
-			if stat.first < rec.first {
+			if timeCompare(stat.first, rec.first) < 0 {
 				rec.first = stat.first
 			}
-			if stat.last > rec.last {
+			if timeCompare(stat.last, rec.last) > 0 {
 				rec.last = stat.last
 			}
 			rec.ttl = stat.ttl
@@ -214,10 +252,10 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 			d.values[q] = stat
 		} else {
 			rec.count += stat.count
-			if stat.first < rec.first {
+			if timeCompare(stat.first, rec.first) < 0 {
 				rec.first = stat.first
 			}
-			if stat.last > rec.last {
+			if timeCompare(stat.last, rec.last) > 0 {
 				rec.last = stat.last
 			}
 			rec.ttl = stat.ttl
@@ -245,7 +283,7 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 		if rec == nil {
 			break
 		}
-		ts := rec.GetFloat("ts")
+		ts := rec.GetString("ts")
 		query := rec.GetString("query")
 		qtype_name := rec.GetString("qtype_name")
 		answers := rec.GetStringList("answers")

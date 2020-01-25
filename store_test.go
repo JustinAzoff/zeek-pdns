@@ -221,7 +221,7 @@ func BenchmarkUpdatePg(b *testing.B) {
 	}
 }
 
-func testBadFile(t *testing.T, s Store, fn string) error {
+func testFile(t *testing.T, s Store, fn string) error {
 	aggregator := NewDNSAggregator()
 	err := aggregate(aggregator, fn)
 	if err != nil {
@@ -234,17 +234,22 @@ func testBadFile(t *testing.T, s Store, fn string) error {
 	}
 	return nil
 }
-func TestIndexingBadFiles(t *testing.T) {
-	badFiles := []string{"./test_data/nbtstat.log", "./test_data/garbage.log", "test_data/bad_ttl.log"}
+func TestIndexingFiles(t *testing.T) {
+	allFiles := []string{
+		"./test_data/nbtstat.log",
+		"./test_data/garbage.log",
+		"./test_data/bad_ttl.log",
+		"./test_data/dns_json_iso8601.json",
+	}
 	for _, ts := range testStores {
 		t.Run(ts.storetype, func(t *testing.T) {
 			store, err := NewStore(ts.storetype, ts.uri)
 			if err != nil {
 				t.Fatalf("can't create store at %s: %v", ts.uri, err)
 			}
-			for _, fn := range badFiles {
+			for _, fn := range allFiles {
 				t.Run(fn, func(t *testing.T) {
-					testBadFile(t, store, fn)
+					testFile(t, store, fn)
 				})
 			}
 		})

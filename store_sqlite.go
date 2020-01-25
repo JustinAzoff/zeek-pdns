@@ -123,7 +123,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 	for _, q := range ar.Tuples {
 		//Update the tuples table
 		query := Reverse(q.query)
-		res, err := update_tuples.Exec(q.count, q.ttl, q.first, q.last, query, q.qtype, q.answer)
+		res, err := update_tuples.Exec(q.count, q.ttl, ToTS(q.first), ToTS(q.last), query, q.qtype, q.answer)
 		if err != nil {
 			return result, err
 		}
@@ -132,7 +132,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 			return result, err
 		}
 		if rows == 0 {
-			_, err := insert_tuples.Exec(query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+			_, err := insert_tuples.Exec(query, q.qtype, q.answer, q.ttl, q.count, ToTS(q.first), ToTS(q.last))
 			if err != nil {
 				return result, err
 			}
@@ -146,7 +146,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		res, err := update_individual.Exec(q.count, q.first, q.last, value, q.which)
+		res, err := update_individual.Exec(q.count, ToTS(q.first), ToTS(q.last), value, q.which)
 		if err != nil {
 			return result, err
 		}
@@ -155,7 +155,7 @@ func (s *SQLiteStore) Update(ar aggregationResult) (UpdateResult, error) {
 			return result, err
 		}
 		if rows == 0 {
-			_, err := insert_individual.Exec(value, q.which, q.count, q.first, q.last)
+			_, err := insert_individual.Exec(value, q.which, q.count, ToTS(q.first), ToTS(q.last))
 			if err != nil {
 				return result, err
 			}

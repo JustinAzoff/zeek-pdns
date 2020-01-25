@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"log"
 )
 
 type Store interface {
@@ -103,4 +104,19 @@ func NewStore(storeType string, filename string) (Store, error) {
 		return nil, err
 	}
 	return s, err
+}
+
+//ToTS ensures a string is a unix timestamp
+//Yes, this is terrible, but supporting both timestamps and iso8601 at the same
+//time is tricky
+func ToTS(t string) string {
+	//If it doesn't have a dash, it should be a unix timestamp already
+	if !strings.Contains(t, "-") {
+		return t
+	}
+	parsed, err := time.Parse(time.RFC3339, t)
+	if err != nil {
+		log.Fatalf("Unparsable timestamp, don't know what to do here: %v", t)
+	}
+	return fmt.Sprintf("%d", parsed.Unix())
 }

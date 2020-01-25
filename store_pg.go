@@ -216,7 +216,7 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 	for _, q := range ar.Tuples {
 		//Update the tuples table
 		query := Reverse(q.query)
-		arguments = append(arguments, query, q.qtype, q.answer, q.ttl, q.count, q.first, q.last)
+		arguments = append(arguments, query, q.qtype, q.answer, q.ttl, q.count, ToTS(q.first), ToTS(q.last))
 		batchCounter++
 		if batchCounter == BATCHSIZE {
 			runBatch(updateTupleTmpl, updateTupleBatch, arguments, batchCounter)
@@ -232,7 +232,7 @@ func (s *PGStore) Update(ar aggregationResult) (UpdateResult, error) {
 		if q.which == "Q" {
 			value = Reverse(value)
 		}
-		arguments = append(arguments, q.which, value, q.count, q.first, q.last)
+		arguments = append(arguments, q.which, value, q.count, ToTS(q.first), ToTS(q.last))
 		batchCounter++
 		if batchCounter == BATCHSIZE {
 			runBatch(updateIndividualTmpl, updateIndividualeBatch, arguments, batchCounter)
