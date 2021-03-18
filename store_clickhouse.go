@@ -3,16 +3,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"net/url"
 	"time"
 
-	clickhouse "github.com/ClickHouse/clickhouse-go"
+	_ "github.com/ClickHouse/clickhouse-go"
 	"github.com/jmoiron/sqlx"
-	"github.com/pkg/errors"
 )
 
 var chschema = []string{
@@ -60,9 +56,9 @@ CREATE TABLE tuples_temp (
     query String,
     type String,
     answer String,
-    ttl UInt16,
-    first DateTime,
-    last DateTime,
+    ttl String,
+    first String,
+    last String,
     count UInt64
 ) ENGINE = Log`
 
@@ -70,19 +66,17 @@ const individual_temp_stmt = `
 CREATE TABLE individual_temp (
     which Enum8('Q'=0, 'A'=1),
     value String,
-    first DateTime,
-    last DateTime,
+    first String,
+    last String,
     count UInt64
 ) ENGINE = Log`
 
 type CHStore struct {
 	conn *sqlx.DB
-	http *clickhouse.Conn
-	host string
 }
 
 func NewCHStore(uri string) (Store, error) {
-	url, err := url.Parse(uri)
+	_, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -96,23 +90,16 @@ func NewCHStore(uri string) (Store, error) {
 		return nil, err
 	}
 
-	t := clickhouse.NewHttpTransport()
-	t.Timeout = time.Second * 5
-	http := clickhouse.NewConn(fmt.Sprintf("%s:8123/default", url.Hostname()), t)
 	return &CHStore{
 		conn: conn,
-		http: http,
-		host: url.Hostname(),
 	}, nil
 }
 
 func (s *CHStore) Close() error {
 	return s.Close()
 }
-
-func (s *CHStore) Exec(query string) error {
-	q := clickhouse.NewQuery(query)
-	err := q.Exec(s.http)
+func (s *CHStore) Exec(stmt string) error {
+	_, err := s.conn.Exec(stmt)
 	return err
 }
 
@@ -126,7 +113,11 @@ func (s *CHStore) Init() error {
 	return nil
 }
 func (s *CHStore) Clear() error {
-	stmts := []string{"DELETE FROM filenames", "DELETE FROM individual", "DELETE FROM tuples"}
+	stmts := []string{
+		"drop table filenames",
+		"drop table individual",
+		"drop table tuples",
+	}
 	for _, stmt := range stmts {
 		err := s.Exec(stmt)
 		if err != nil {
@@ -149,65 +140,94 @@ func (s *CHStore) DeleteOld(days int64) (int64, error) {
 	return 0, fmt.Errorf("clickhouse doesn't support delete")
 }
 
-func (s *CHStore) SendJSON(table string, r io.Reader) error {
-	timeout := time.Duration(60 * time.Second)
-	client := http.Client{
-		Timeout: timeout,
-	}
-
-	v := url.Values{}
-	v.Set("query", fmt.Sprintf("INSERT INTO %s FORMAT JSONEachRow", table))
-	qs := v.Encode()
-	u := fmt.Sprintf("http://%s:8123?%s", s.host, qs)
-
-	resp, err := client.Post(u, "application/json", r)
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("Clickhouse error: %s", body)
-	}
-	return err
-}
-
 func (s *CHStore) Update(ar aggregationResult) (UpdateResult, error) {
 	var result UpdateResult
+	var err error
 	start := time.Now()
 
 	s.Exec("DROP TABLE tuples_temp")
 	s.Exec("DROP TABLE individual_temp")
 
-	err := s.Exec(tuples_temp_stmt)
+	err = s.Exec(tuples_temp_stmt)
 	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update failed to create temporary tuples table")
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
 	}
 	err = s.Exec(individual_temp_stmt)
 	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update failed to create temporary individual table")
-	}
-	defer func() {
-		//s.conn.Exec("DROP TABLE tuples_temp")
-		//s.conn.Exec("DROP TABLE individual_temp")
-	}()
-
-	err = s.SendJSON("tuples_temp", ar.TupleJSONReader(true))
-	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update tuples failed")
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
 	}
 
-	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT query, type, answer, anyLastState(ttl), minState(first), maxState(last), sumState(count) from tuples_temp group by query, type, answer`)
+	tx, err := s.conn.Begin()
 	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update failed to insert into tuples")
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	stmt, err := tx.Prepare(`INSERT INTO tuples_temp
+		(query, type, answer, ttl, first, last, count)
+		values (?,?,?,?,?,?,?)`,
+	)
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	// Ok, now let's update stuff
+	// tuples
+	for _, q := range ar.Tuples {
+		//Update the tuples table
+		query := Reverse(q.query)
+		_, err := stmt.Exec(query, q.qtype, q.answer, q.ttl, ToTS(q.first), ToTS(q.last), uint64(q.count))
+		if err != nil {
+			return result, fmt.Errorf("CHStore.Update failed to run query: %w", err)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	err = s.Exec(`INSERT INTO tuples (query, type, answer, ttl, first, last, count) SELECT
+		query, type, answer,
+		anyLastState(toUInt16(ttl)),
+		minState(toDateTime(toFloat64(first))),
+		maxState(toDateTime(toFloat64(last))),
+		sumState(count) from tuples_temp group by query, type, answer`,
+	)
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
 	}
 
-	err = s.SendJSON("individual_temp", ar.IndividualJSONReader(true))
+	tx, err = s.conn.Begin()
 	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update individual failed")
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	// Individuals
+	stmt, err = tx.Prepare(`INSERT INTO individual_temp
+		(value, which, first, last, count)
+		values (?,?,?,?,?)`,
+	)
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	for _, q := range ar.Individual {
+		//Update the tuples table
+		value := q.value
+		if q.which == "Q" {
+			value = Reverse(value)
+		}
+		_, err := stmt.Exec(value, q.which, ToTS(q.first), ToTS(q.last), uint64(q.count))
+		if err != nil {
+			return result, fmt.Errorf("CHStore.Update failed to run query: %w", err)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
+	}
+	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value,
+	minState(toDateTime(toFloat64(first))),
+	maxState(toDateTime(toFloat64(last))),
+	sumState(count) from individual_temp group by which, value`)
+	if err != nil {
+		return result, fmt.Errorf("CHStore.Update failed: %w", err)
 	}
 
-	err = s.Exec(`INSERT INTO individual (which, value, first, last, count) SELECT which, value, minState(first), maxState(last), sumState(count) from individual_temp group by which, value`)
-	if err != nil {
-		return result, errors.Wrap(err, "CHStore.Update failed to insert into individual")
-	}
 	result.Updated = uint(ar.TuplesLen + ar.IndividualLen)
 	result.Duration = time.Since(start)
 	return result, nil

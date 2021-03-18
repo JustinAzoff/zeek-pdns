@@ -332,8 +332,8 @@ type JSONTuple struct {
 	Answer string `json:"answer"`
 	TTL    string `json:"ttl"`
 	Count  uint   `json:"count"`
-	First  uint64 `json:"first"`
-	Last   uint64 `json:"last"`
+	First  string `json:"first"`
+	Last   string `json:"last"`
 }
 
 func (ar *aggregationResult) TupleJSONReader(reverseQuery bool) io.ReadCloser {
@@ -355,8 +355,8 @@ func (ar *aggregationResult) TupleJSONReader(reverseQuery bool) io.ReadCloser {
 				Answer: t.answer,
 				TTL:    t.ttl,
 				Count:  t.count,
-				First:  uint64(t.first),
-				Last:   uint64(t.last),
+				First:  t.first,
+				Last:   t.last,
 			}
 			err := encoder.Encode(v)
 			if err != nil {
@@ -372,8 +372,8 @@ type JSONIndividual struct {
 	Value string `json:"value"`
 	Which string `json:"which"`
 	Count uint   `json:"count"`
-	First uint64 `json:"first"`
-	Last  uint64 `json:"last"`
+	First string `json:"first"`
+	Last  string `json:"last"`
 }
 
 func (ar *aggregationResult) IndividualJSONReader(reverseQuery bool) io.ReadCloser {
@@ -393,8 +393,8 @@ func (ar *aggregationResult) IndividualJSONReader(reverseQuery bool) io.ReadClos
 				Value: q,
 				Which: t.which,
 				Count: t.count,
-				First: uint64(t.first),
-				Last:  uint64(t.last),
+				First: t.first,
+				Last:  t.last,
 			}
 			err := encoder.Encode(v)
 			if err != nil {

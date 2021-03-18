@@ -8,7 +8,7 @@ import (
 )
 
 var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
-var chTestUrl = "clickhouse://localhost:9000/default"
+var chTestUrl = "tcp://localhost:9000/default"
 
 type storeTest struct {
 	storetype string
@@ -24,16 +24,17 @@ func init() {
 	if envUrl != "" {
 		pgTestUrl = envUrl
 	}
-	testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
+	//testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
 	envUrl = os.Getenv("CH_TEST_URL")
 	if envUrl != "" {
 		chTestUrl = envUrl
 	}
-	testStores = append(testStores, storeTest{"postgresql", chTestUrl})
+	testStores = append(testStores, storeTest{"clickhouse", chTestUrl})
 }
 
 func doTestLogIndexed(t *testing.T, s Store) {
 	s.Clear()
+	s.Init()
 	testFilename := "test.log"
 	indexed, err := s.IsLogIndexed(testFilename)
 	if err != nil {
@@ -75,6 +76,7 @@ func LoadFile(s Store, fn string) UpdateResult {
 
 func doExampleUpdating(s Store, forward bool) {
 	s.Clear()
+	s.Init()
 
 	var files []string
 
@@ -213,9 +215,9 @@ func ExampleUpdatingClickhouseForward() {
 	//A: Inserted=0 Updated=31
 	//B: Inserted=0 Updated=31
 	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01T00:03:03Z	2016-04-01T21:55:04Z
+	//www.reddit.com	Q	2	2016-03-31T20:03:03-04:00	2016-04-01T17:55:04-04:00
 	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03Z	2016-04-01T21:55:04Z
+	//www.reddit.com	A	198.41.208.138	2	300	2016-03-31T20:03:03-04:00	2016-04-01T17:55:04-04:00
 }
 
 func BenchmarkUpdateSQLite(b *testing.B) {
