@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"net/url"
 	"time"
 
@@ -131,7 +130,7 @@ func (s *CHStore) Begin() error {
 	return fmt.Errorf("clickhouse doesn't support transactions")
 }
 func (s *CHStore) Commit() error {
-	log.Printf("clickhouse doesn't support transactions")
+	//log.Printf("clickhouse doesn't support transactions")
 	return nil
 }
 
