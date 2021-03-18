@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"log"
 	"strconv"
 	"strings"
@@ -308,4 +310,72 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 	}
 
 	return nil
+}
+
+type JSONTuple struct {
+	Query  string  `json:"query"`
+	Type   string  `json:"type"`
+	Answer string  `json:"answer"`
+	TTL    string  `json:"ttl"`
+	Count  uint    `json:"count"`
+	First  float64 `json:"first"`
+	Last   float64 `json:"last"`
+}
+
+func (ar *aggregationResult) TupleJSONReader() io.ReadCloser {
+	pr, pw := io.Pipe()
+
+	encoder := json.NewEncoder(pw)
+	go func() {
+		defer pw.Close()
+		for _, t := range ar.Tuples {
+			v := JSONTuple{
+				Query:  t.query,
+				Type:   t.qtype,
+				Answer: t.answer,
+				TTL:    t.ttl,
+				Count:  t.count,
+				First:  t.first,
+				Last:   t.last,
+			}
+			err := encoder.Encode(v)
+			if err != nil {
+				pr.CloseWithError(err)
+				return
+			}
+		}
+	}()
+	return pr
+}
+
+type JSONIndividual struct {
+	Value string  `json:"value"`
+	Which string  `json:"which"`
+	Count uint    `json:"count"`
+	First float64 `json:"first"`
+	Last  float64 `json:"last"`
+}
+
+func (ar *aggregationResult) IndividualJSONReader() io.ReadCloser {
+	pr, pw := io.Pipe()
+
+	encoder := json.NewEncoder(pw)
+	go func() {
+		defer pw.Close()
+		for _, t := range ar.Individual {
+			v := JSONIndividual{
+				Value: t.value,
+				Which: t.which,
+				Count: t.count,
+				First: t.first,
+				Last:  t.last,
+			}
+			err := encoder.Encode(v)
+			if err != nil {
+				pr.CloseWithError(err)
+				return
+			}
+		}
+	}()
+	return pr
 }

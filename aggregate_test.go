@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"sort"
 	"testing"
 )
@@ -134,4 +136,67 @@ func BenchmarkAggregate(b *testing.B) {
 		aggregated := aggregator.GetResult()
 		total += aggregated.TotalRecords
 	}
+}
+
+func ExampleResultTupleJSONReader() {
+	ag := NewDNSAggregator()
+
+	ag.AddRecord(DNSRecord{
+		ts:      10,
+		query:   "www.example.com",
+		qtype:   "A",
+		answers: []string{"1.2.3.4"},
+		ttls:    []string{"300"},
+	})
+	ag.AddRecord(DNSRecord{
+		ts:      20,
+		query:   "www.example.com",
+		qtype:   "A",
+		answers: []string{"1.2.3.5"},
+		ttls:    []string{"300"},
+	})
+
+	res := ag.GetResult()
+	reader := res.TupleJSONReader()
+
+	body, err := ioutil.ReadAll(reader)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+	}
+	fmt.Printf("%s", body)
+	// Output:
+	//{"query":"www.example.com","type":"A","answer":"1.2.3.4","ttl":"300","count":1,"first":10,"last":10}
+	//{"query":"www.example.com","type":"A","answer":"1.2.3.5","ttl":"300","count":1,"first":20,"last":20}
+}
+
+func ExampleResultIndividualJSONReader() {
+	ag := NewDNSAggregator()
+
+	ag.AddRecord(DNSRecord{
+		ts:      10,
+		query:   "www.example.com",
+		qtype:   "A",
+		answers: []string{"1.2.3.4"},
+		ttls:    []string{"300"},
+	})
+	ag.AddRecord(DNSRecord{
+		ts:      20,
+		query:   "www.example.com",
+		qtype:   "A",
+		answers: []string{"1.2.3.5"},
+		ttls:    []string{"300"},
+	})
+
+	res := ag.GetResult()
+	reader := res.IndividualJSONReader()
+
+	body, err := ioutil.ReadAll(reader)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v", err)
+	}
+	fmt.Printf("%s", body)
+	// Output:
+	//{"value":"www.example.com","which":"Q","count":2,"first":10,"last":20}
+	//{"value":"1.2.3.4","which":"A","count":1,"first":10,"last":10}
+	//{"value":"1.2.3.5","which":"A","count":1,"first":20,"last":20}
 }

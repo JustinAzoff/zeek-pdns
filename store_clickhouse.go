@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	clickhouse "github.com/ClickHouse/clickhouse-go"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/kshvakov/clickhouse"
 	"github.com/pkg/errors"
-	clickhouse "github.com/roistat/go-clickhouse"
 )
 
 var chschema = []string{
