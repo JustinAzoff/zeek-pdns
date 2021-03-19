@@ -1,9 +1,8 @@
 language: go
 
 go:
-  - "1.12"
-  - "1.13"
-  - tip
+  - "1.15"
+  - "1.16"
 
 services:
   - postgresql
