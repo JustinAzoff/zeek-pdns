@@ -24,7 +24,7 @@ func init() {
 	if envUrl != "" {
 		pgTestUrl = envUrl
 	}
-	//testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
+	testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
 	envUrl = os.Getenv("CH_TEST_URL")
 	if envUrl != "" {
 		chTestUrl = envUrl
