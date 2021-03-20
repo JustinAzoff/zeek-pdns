@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
@@ -60,21 +61,21 @@ func doTestLogIndexed(t *testing.T, s Store) {
 	}
 }
 
-func LoadFile(s Store, fn string) UpdateResult {
+func LoadFile(t *testing.T, s Store, fn string) UpdateResult {
 	aggregator := NewDNSAggregator()
 	err := aggregate(aggregator, fn)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	aggregated := aggregator.GetResult()
 	result, err := s.Update(aggregated)
 	if err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 	return result
 }
 
-func doExampleUpdating(s Store, forward bool) {
+func doTestUpdating(t *testing.T, s Store, forward bool) {
 	s.Clear()
 	s.Init()
 
@@ -86,149 +87,71 @@ func doExampleUpdating(s Store, forward bool) {
 		files = []string{"test_data/reddit_2.txt", "test_data/reddit_1.txt"}
 	}
 
-	result_a := LoadFile(s, files[0])
-	result_b := LoadFile(s, files[1])
+	result_a := LoadFile(t, s, files[0])
+	result_b := LoadFile(t, s, files[1])
 
-	fmt.Printf("A: Inserted=%d Updated=%d\n", result_a.Inserted, result_a.Updated)
-	fmt.Printf("B: Inserted=%d Updated=%d\n", result_b.Inserted, result_b.Updated)
+	assert.EqualValues(t, result_a.Inserted, 31)
+	assert.EqualValues(t, result_a.Updated, 0)
+
+	assert.EqualValues(t, result_b.Inserted, 0)
+	assert.EqualValues(t, result_b.Updated, 31)
 
 	recs, err := s.FindIndividual("www.reddit.com")
 	if err != nil {
-		fmt.Print(err)
+		t.Fatalf("Failed to find: %v", err)
 		return
 	}
-	fmt.Printf("Individual records: %d\n", len(recs))
-	for _, rec := range recs {
-		fmt.Printf("%s\n", rec)
+	//www.reddit.com  Q       2       2016-04-01 00:03:03     2016-04-01 21:55:04
+	if assert.Equal(t, len(recs), 1) {
+		rec := recs[0]
+		assert.Equal(t, rec.Value, "www.reddit.com")
+		assert.Equal(t, rec.Which, "Q")
+		assert.EqualValues(t, rec.Count, 2)
+		//This is stupid, but I need to fix things so that they return actual dates
+		//and get a handle on the timezone BS.
+		//So for now, ignore the ' ' vs 'T' difference, and the hour
+		assert.Regexp(t, "2016-04-01...:03:03", rec.First)
+		assert.Regexp(t, "2016-04-01...:55:04", rec.Last)
 	}
+	//www.reddit.com  A       198.41.208.138  2       300     2016-04-01 00:03:03     2016-04-01 21:55:04
+
 	trecs, err := s.FindTuples("198.41.208.138")
 	if err != nil {
-		fmt.Print(err)
+		t.Fatalf("Failed to find: %v", err)
 		return
 	}
-	fmt.Printf("Tuple records: %d\n", len(trecs))
-	for _, rec := range trecs {
-		fmt.Printf("%s\n", rec)
+	if assert.Equal(t, len(trecs), 1) {
+		rec := trecs[0]
+		assert.Equal(t, rec.Query, "www.reddit.com")
+		assert.Equal(t, rec.Type, "A")
+		assert.Equal(t, rec.Answer, "198.41.208.138")
+		assert.EqualValues(t, rec.Count, 2)
+		//This is stupid, but I need to fix things so that they return actual dates
+		//and get a handle on the timezone BS.
+		//So for now, ignore the ' ' vs 'T' difference, and the hour
+		assert.Regexp(t, "2016-04-01...:03:03", rec.First)
+		assert.Regexp(t, "2016-04-01...:55:04", rec.Last)
 	}
 
 }
 
-func testLogIndexedSqlite(t *testing.T) {
-	store, err := NewStore("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	doTestLogIndexed(t, store)
-}
-func testLogIndexedPg(t *testing.T) {
-	store, err := NewStore("postgresql", pgTestUrl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	doTestLogIndexed(t, store)
-}
-func testLogIndexedCh(t *testing.T) {
-	store, err := NewStore("clickhouse", chTestUrl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	doTestLogIndexed(t, store)
-}
-
-func TestLogIndexed(t *testing.T) {
-	t.Run("sqlite", testLogIndexedSqlite)
-	t.Run("postgresql", testLogIndexedPg)
-	t.Run("clickhouse", testLogIndexedCh)
-}
-
-func ExampleUpdatingSqliteForward() {
-	store, err := NewStore("sqlite", ":memory:")
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
-	doExampleUpdating(store, true)
-	// Output:
-	//A: Inserted=31 Updated=0
-	//B: Inserted=0 Updated=31
-	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
-	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
-}
-
-func ExampleUpdatingSqliteReverse() {
-	store, err := NewStore("sqlite", ":memory:")
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
-	doExampleUpdating(store, false)
-	// Output:
-	//A: Inserted=31 Updated=0
-	//B: Inserted=0 Updated=31
-	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
-	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
-}
-
-func ExampleUpdatingPgForward() {
-	store, err := NewStore("postgresql", pgTestUrl)
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
-	doExampleUpdating(store, true)
-	// Output:
-	//A: Inserted=31 Updated=0
-	//B: Inserted=0 Updated=31
-	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
-	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
-}
-
-func ExampleUpdatingPgReverse() {
-	store, err := NewStore("postgresql", pgTestUrl)
-	if err != nil {
-		return
-	}
-	doExampleUpdating(store, false)
-	// Output:
-	//A: Inserted=31 Updated=0
-	//B: Inserted=0 Updated=31
-	//Individual records: 1
-	//www.reddit.com	Q	2	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
-	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-04-01T00:03:03.75Z	2016-04-01T21:55:04.5Z
-}
-
-func ExampleUpdatingClickhouseForward() {
-	store, err := NewStore("clickhouse", chTestUrl)
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
-	doExampleUpdating(store, true)
-	// Output:
-	//A: Inserted=0 Updated=31
-	//B: Inserted=0 Updated=31
-	//Individual records: 1
-	//www.reddit.com	Q	2	2016-03-31T20:03:03-04:00	2016-04-01T17:55:04-04:00
-	//Tuple records: 1
-	//www.reddit.com	A	198.41.208.138	2	300	2016-03-31T20:03:03-04:00	2016-04-01T17:55:04-04:00
-}
+// Output:
+//A: Inserted=31 Updated=0
+//B: Inserted=0 Updated=31
+//Individual records: 1
+//www.reddit.com	Q	2	2016-04-01 00:03:03	2016-04-01 21:55:04
+//Tuple records: 1
+//www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
 
 func BenchmarkUpdateSQLite(b *testing.B) {
 	aggregator := NewDNSAggregator()
 	err := aggregate(aggregator, "big.log")
 	if err != nil {
-		log.Fatal(err)
+		b.Fatal(err)
 	}
 	aggregated := aggregator.GetResult()
 	if err != nil {
-		log.Fatal(err)
+		b.Fatal(err)
 	}
 	store, err := NewStore("sqlite", ":memory:")
 	if err != nil {
@@ -249,7 +172,7 @@ func BenchmarkUpdatePg(b *testing.B) {
 	aggregator := NewDNSAggregator()
 	err = aggregate(aggregator, "big.log.gz")
 	if err != nil {
-		log.Fatal(err)
+		b.Fatal(err)
 	}
 	aggregated := aggregator.GetResult()
 	b.ResetTimer()
@@ -274,6 +197,7 @@ func testFile(t *testing.T, s Store, fn string) error {
 	}
 	return nil
 }
+
 func TestIndexingFiles(t *testing.T) {
 	allFiles := []string{
 		"./test_data/nbtstat.log",
@@ -282,7 +206,7 @@ func TestIndexingFiles(t *testing.T) {
 		"./test_data/dns_json_iso8601.json",
 	}
 	for _, ts := range testStores {
-		t.Run(ts.storetype, func(t *testing.T) {
+		t.Run(fmt.Sprintf("Indexing/%s", ts.storetype), func(t *testing.T) {
 			store, err := NewStore(ts.storetype, ts.uri)
 			if err != nil {
 				t.Fatalf("can't create store at %s: %v", ts.uri, err)
@@ -292,6 +216,30 @@ func TestIndexingFiles(t *testing.T) {
 					testFile(t, store, fn)
 				})
 			}
+		})
+	}
+}
+
+func doTestStore(t *testing.T, store Store) {
+	t.Run("testLogIndexed", func(t *testing.T) {
+		doTestLogIndexed(t, store)
+	})
+	t.Run("forward", func(t *testing.T) {
+		doTestUpdating(t, store, true)
+	})
+	t.Run("reverse", func(t *testing.T) {
+		doTestUpdating(t, store, false)
+	})
+}
+
+func TestStoreIndexing(t *testing.T) {
+	for _, ts := range testStores {
+		t.Run(ts.storetype, func(t *testing.T) {
+			store, err := NewStore(ts.storetype, ts.uri)
+			if err != nil {
+				t.Fatalf("can't create store at %s: %v", ts.uri, err)
+			}
+			doTestStore(t, store)
 		})
 	}
 }

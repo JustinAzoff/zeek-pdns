@@ -1,2 +1,2 @@
-docker run --rm -t -i -p 5432:5432 -e POSTGRES_DB=pdns_test postgres
+docker run --rm -t -i -p 5432:5432 -e POSTGRES_DB=pdns_test -e POSTGRES_PASSWORD=pdns postgres
 PG_TEST_URL="postgres://postgres:password@$(docker-machine ip)/pdns_test?sslmode=disable"  go test -v
