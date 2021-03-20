@@ -36,6 +36,7 @@ Requirements
 
 * go compiler ( to build )
 * postgresql ( optional )
+* clickhouse ( optional )
 
 Build
 -----
@@ -45,14 +46,20 @@ Build
 Index logs
 ----------
 
+    # for postgresql
     export PDNS_STORE_TYPE="postgresql"
     export PDNS_STORE_URI="postgres://pdns:foo@localhost/pdns?sslmode=disable"
 
-    # or 
+    # for clickhouse
+    export PDNS_STORE_TYPE="clickhouse"
+    export PDNS_STORE_URI="tcp://localhost:9000/?database=pdns"
+
+    # for built in sqlite
     export PDNS_STORE_TYPE="sqlite"
     export PDNS_STORE_URI="/path/to/passivedns.sqlite"
 
-    find /usr/local/bro/logs -name dns* | sort -n | xargs -n 50 bro-pdns index
+    # then finally index logs
+    find /usr/local/bro/logs -name 'dns*' | sort -n | xargs -n 50 bro-pdns index
 
 Query Database
 --------------
