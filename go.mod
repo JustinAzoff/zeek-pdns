@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
 	github.com/JustinAzoff/flow-indexer v0.2.2
-	github.com/buger/jsonparser v0.0.0-20191204142016-1a29609e0929
+	github.com/buger/jsonparser v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/lib/pq v1.3.0
