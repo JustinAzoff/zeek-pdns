@@ -20,7 +20,7 @@ table, td, th {
 		<fieldset>
 			<legend>pdns search</legend>
 			<label for="query"> Query </label>
-			<input type="search" id="query" name="query" value="{{.Query}}">
+			<input type="search" id="query" name="query" value="{{.Query}}" autofocus>
 
 			<label for="exact"> Exact match </label>
 			<input type="checkbox" id="exact" name="exact" {{if .Exact}}checked{{end}} >
