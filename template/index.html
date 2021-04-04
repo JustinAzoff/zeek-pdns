@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>pdns{{if .Query}} - {{.Query }}{{end}}</title>
+
+<style type="text/css">
+table, td, th {
+  border: 1px solid black;
+  border-collapse: collapse;
+  white-space: nowrap;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+}
+</style>
+
+</head>
+
+<body>
+	<form method="GET">
+		<fieldset>
+			<legend>pdns search</legend>
+			<label for="query"> Query </label>
+			<input type="search" id="query" name="query" value="{{.Query}}">
+
+			<label for="exact"> Exact match </label>
+			<input type="checkbox" id="exact" name="exact" {{if .Exact}}checked{{end}} >
+
+			<input type="submit" value="Search">
+		</fieldset>
+	</form>
+
+	{{ if .Error }}
+	Error searching: {{.Error }}
+	{{ end }}
+
+	{{ if .Individual }}
+	<h1>Individual values</h1>
+	<table width="100%" border="1">
+		<thead>
+		<tr>
+			<th>Value</th>
+			<th>Which</th>
+			<th>Count</th>
+			<th>First</th>
+			<th>Last</th>
+		</tr>
+		</thead>
+		<tbody>
+		{{range $val := .Individual}}
+			<tr>
+				<td> {{$val.Value}} </td>
+				<td> {{$val.Which}} </td>
+				<td> {{$val.Count}} </td>
+				<td> {{$val.First}} </td>
+				<td> {{$val.Last}} </td>
+			</tr>
+		{{end}}
+		</tbody>
+	</table>
+	{{ end }}
+
+	{{ if .Tuples }}
+	<h1>Tuples</h1>
+	<table width="100%" border="1">
+		<thead>
+		<tr>
+			<th>Query</th>
+			<th>Type</th>
+			<th>Answer</th>
+			<th>TTL</th>
+			<th>Count</th>
+			<th>First</th>
+			<th>Last</th>
+		</tr>
+		</thead>
+		<tbody>
+		{{range $val := .Tuples}}
+			<tr>
+				<td> {{$val.Query}} </td>
+				<td> {{$val.Type}} </td>
+				<td> {{$val.Answer}} </td>
+				<td> {{$val.TTL}} </td>
+				<td> {{$val.Count}} </td>
+				<td> {{$val.First}} </td>
+				<td> {{$val.Last}} </td>
+			</tr>
+		{{end}}
+		</tbody>
+	</table>
+	{{ end }}
+</body>
+
+</html>
