@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JustinAzoff/flow-indexer/backend"
+	opendecompress "github.com/JustinAzoff/go-opendecompress"
 )
 
 var MAX_SANE_VALUE_LEN = 1000
@@ -271,7 +271,7 @@ func (d *DNSAggregator) Merge(other *DNSAggregator) {
 }
 
 func aggregate(aggregator *DNSAggregator, fn string) error {
-	f, err := backend.OpenDecompress(fn)
+	f, err := opendecompress.Open(fn)
 	if err != nil {
 		return err
 	}

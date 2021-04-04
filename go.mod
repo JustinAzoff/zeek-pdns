@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/ClickHouse/clickhouse-go v1.4.3
-	github.com/JustinAzoff/flow-indexer v0.2.2
+	github.com/JustinAzoff/go-opendecompress v0.0.0-20210404020920-ed787af23844
 	github.com/buger/jsonparser v1.1.1
 	github.com/gorilla/mux v1.7.3
 	github.com/jmoiron/sqlx v1.2.0
