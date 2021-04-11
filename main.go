@@ -27,53 +27,10 @@ var RootCmd = &cobra.Command{
 
 var IndexCmd = &cobra.Command{
 	Use:   "index",
-	Short: "Index a dns log file",
+	Short: "Index one or more dns log files",
 	Run: func(cmd *cobra.Command, args []string) {
 		mystore := getStore()
-		var didWork bool
-		mystore.Begin()
-		aggregator := NewDNSAggregator()
-		var emptyStoreResult UpdateResult
-		aggMap := make(map[string]aggregationResult)
-		for _, fn := range args {
-			indexed, err := mystore.IsLogIndexed(fn)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if indexed {
-				log.Printf("%s: Already indexed", fn)
-				continue
-			}
-
-			fileAgg := NewDNSAggregator()
-			err = aggregate(fileAgg, fn)
-			if err != nil {
-				log.Fatal(err)
-			}
-			aggregator.Merge(fileAgg)
-			aggregated := fileAgg.GetResult()
-			log.Printf("%s: Aggregation: Duration=%0.1f TotalRecords=%d SkippedRecords=%d Tuples=%d Individual=%d", fn,
-				aggregated.Duration.Seconds(), aggregated.TotalRecords, aggregated.SkippedRecords, aggregated.TuplesLen, aggregated.IndividualLen)
-			aggMap[fn] = aggregated.ShallowCopy()
-			didWork = true
-		}
-		if !didWork {
-			return
-			//TODO: rollback transaction
-		}
-		aggregated := aggregator.GetResult()
-		result, err := mystore.Update(aggregated)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Printf("batch: Store: Duration=%0.1f Inserted=%d Updated=%d", result.Duration.Seconds(), result.Inserted, result.Updated)
-		for fn, aggregated := range aggMap {
-			err = mystore.SetLogIndexed(fn, aggregated, emptyStoreResult)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		err = mystore.Commit()
+		err := index(mystore, args)
 		if err != nil {
 			log.Fatal(err)
 		}
