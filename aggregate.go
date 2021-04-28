@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"strconv"
@@ -283,6 +284,10 @@ func aggregate(aggregator *DNSAggregator, fn string) error {
 
 	for {
 		rec, err := br.Next()
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			log.Printf("Possible truncated file %s: %v", fn, err)
+			break
+		}
 		if err != nil {
 			return err
 		}
