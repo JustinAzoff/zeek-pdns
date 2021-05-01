@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS filenames (
 `}
 
 const tuples_temp_stmt = `
-CREATE TABLE tuples_temp (
+CREATE TEMPORARY TABLE tuples_temp (
     query String,
     type String,
     answer String,
@@ -59,16 +59,16 @@ CREATE TABLE tuples_temp (
     first String,
     last String,
     count UInt64
-) ENGINE = Log`
+) ENGINE = Memory`
 
 const individual_temp_stmt = `
-CREATE TABLE individual_temp (
+CREATE TEMPORARY TABLE individual_temp (
     which Enum8('Q'=0, 'A'=1),
     value String,
     first String,
     last String,
     count UInt64
-) ENGINE = Log`
+) ENGINE = Memory`
 
 type CHStore struct {
 	conn *sqlx.DB
