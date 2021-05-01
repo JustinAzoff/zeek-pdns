@@ -7,6 +7,10 @@ services:
   - postgresql
   - docker
 
+env:
+  - PG_TEST_URL=postgres://postgres:password@localhost/pdns_test?sslmode=disable
+  - CH_TEST_URL=tcp://localhost:9000/default
+
 before_script:
   - psql -c 'create database pdns_test;' -U postgres
   - docker run -d -p 127.0.0.1:9000:9000 -p 127.0.0.1:8123:8123 --name test-clickhouse-server --ulimit nofile=262144:262144 yandex/clickhouse-server

@@ -8,9 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var pgTestUrl = "postgres://postgres:password@localhost/pdns_test?sslmode=disable"
-var chTestUrl = "tcp://localhost:9000/default"
-
 type storeTest struct {
 	storetype string
 	uri       string
@@ -21,16 +18,14 @@ var testStores = []storeTest{
 }
 
 func init() {
-	envUrl := os.Getenv("PG_TEST_URL")
-	if envUrl != "" {
-		pgTestUrl = envUrl
+	pgTestUrl := os.Getenv("PG_TEST_URL")
+	if pgTestUrl != "" {
+		testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
 	}
-	testStores = append(testStores, storeTest{"postgresql", pgTestUrl})
-	envUrl = os.Getenv("CH_TEST_URL")
-	if envUrl != "" {
-		chTestUrl = envUrl
+	chTestUrl := os.Getenv("CH_TEST_URL")
+	if chTestUrl != "" {
+		testStores = append(testStores, storeTest{"clickhouse", chTestUrl})
 	}
-	testStores = append(testStores, storeTest{"clickhouse", chTestUrl})
 }
 
 func doTestLogIndexed(t *testing.T, s Store) {
@@ -151,44 +146,28 @@ func doTestUpdating(t *testing.T, s Store, forward bool) {
 //Tuple records: 1
 //www.reddit.com	A	198.41.208.138	2	300	2016-04-01 00:03:03	2016-04-01 21:55:04
 
-func BenchmarkUpdateSQLite(b *testing.B) {
-	aggregator := NewDNSAggregator()
-	err := aggregate(aggregator, "big.log")
-	if err != nil {
-		b.Fatal(err)
-	}
-	aggregated := aggregator.GetResult()
-	if err != nil {
-		b.Fatal(err)
-	}
-	store, err := NewStore("sqlite", ":memory:")
-	if err != nil {
-		return
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		store.Update(aggregated)
-	}
-}
+func BenchmarkUpdateStores(b *testing.B) {
+	for _, ts := range testStores {
+		b.Run(fmt.Sprintf("Indexing/%s", ts.storetype), func(b *testing.B) {
+			store, err := NewStore(ts.storetype, ts.uri)
+			if err != nil {
+				b.Fatalf("NewStore failed: %s", err)
+			}
 
-func BenchmarkUpdatePg(b *testing.B) {
-	store, err := NewStore("postgresql", pgTestUrl)
-	if err != nil {
-		b.Fatalf("NewStore failed: %s", err)
-	}
-
-	aggregator := NewDNSAggregator()
-	err = aggregate(aggregator, "big.log.gz")
-	if err != nil {
-		b.Fatal(err)
-	}
-	aggregated := aggregator.GetResult()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := store.Update(aggregated)
-		if err != nil {
-			b.Fatalf("store.Update failed: %s", err)
-		}
+			aggregator := NewDNSAggregator()
+			err = aggregate(aggregator, "big.log.gz")
+			if err != nil {
+				b.Fatal(err)
+			}
+			aggregated := aggregator.GetResult()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				_, err := store.Update(aggregated)
+				if err != nil {
+					b.Fatalf("store.Update failed: %s", err)
+				}
+			}
+		})
 	}
 }
 
