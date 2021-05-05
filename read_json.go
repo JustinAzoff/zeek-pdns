@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
-	"github.com/pkg/errors"
 )
 
 type BroJSONReader struct {
@@ -48,7 +47,7 @@ func (r *JSONRecord) IsMissingFieldError() bool {
 
 func (r *JSONRecord) Error() error {
 	if r.err != nil {
-		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))
+		return fmt.Errorf("Error parsing %s: %w", r, r.err)
 	}
 	return nil
 }

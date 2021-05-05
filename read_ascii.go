@@ -8,8 +8,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func grab_value(line string) string {
@@ -95,7 +93,7 @@ func (r *ASCIIRecord) IsMissingFieldError() bool {
 }
 func (r *ASCIIRecord) Error() error {
 	if r.err != nil {
-		return errors.Wrap(r.err, fmt.Sprintf("Error parsing %s", r))
+		return fmt.Errorf("Error parsing %s: %w", r, r.err)
 	}
 	return nil
 }
