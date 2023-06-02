@@ -1,4 +1,4 @@
-module github.com/JustinAzoff/bro-pdns
+module github.com/JustinAzoff/zeek-pdns
 
 go 1.16
 

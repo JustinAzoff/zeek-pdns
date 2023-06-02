@@ -1,16 +1,14 @@
-Passive DNS for Bro
+Passive DNS for Zeek
 ===================
 
-[![Build Status](https://travis-ci.org/JustinAzoff/bro-pdns.svg?branch=go-rewrite)](https://travis-ci.org/JustinAzoff/bro-pdns)
-
 This is an extremely simple implementation of a passive DNS collection system
-that utilizes Bro for DNS log collection.
+that utilizes Zeek for DNS log collection.
 
 Passive DNS collection can be used for various security or troubleshooting
 purposes.  Many queries to raw DNS logs can be done faster by using 
 the aggregated data in the passive DNS database, which is more compact.
 
-This tool uses the Bro DNS logs to build a database of unique query+type+answer
+This tool uses the Zeek DNS logs to build a database of unique query+type+answer
 tuples.
 
 It produces a table like this:
@@ -59,23 +57,23 @@ Index logs
     export PDNS_STORE_URI="/path/to/passivedns.sqlite"
 
     # then finally index logs
-    find /usr/local/bro/logs -name 'dns*' | sort -n | xargs -n 50 bro-pdns index
+    find /usr/local/zeek/logs -name 'dns*' | sort -n | xargs -n 50 zeek-pdns index
 
 Query Database
 --------------
 
     # suffix search:
-    $ bro-pdns like tuples google.com
-    $ bro-pdns like individual google.com
+    $ zeek-pdns like tuples google.com
+    $ zeek-pdns like individual google.com
 
     # exact match
-    $ bro-pdns find tuples google.com
-    $ bro-pdns find individual google.com
+    $ zeek-pdns find tuples google.com
+    $ zeek-pdns find individual google.com
 
 Start HTTP server
 -----------------
 
-    $ bro-pdns web
+    $ zeek-pdns web
 
 Query HTTP API
 --------------

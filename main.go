@@ -20,7 +20,7 @@ func getStore() Store {
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "bro-pdns",
+	Use:   "zeek-pdns",
 	Short: "Passive DNS Collection for BRO",
 	Run:   nil,
 }

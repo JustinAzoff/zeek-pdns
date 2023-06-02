@@ -10,10 +10,10 @@ static:
 
 .PHONY: rpm
 rpm: build
-rpm: VERSION=$(shell ./bro-pdns version)
+rpm: VERSION=$(shell ./zeek-pdns version)
 rpm:
-	fpm -f -s dir -t rpm -n bro-pdns -v $(VERSION) \
+	fpm -f -s dir -t rpm -n zeek-pdns -v $(VERSION) \
 	--iteration=1 \
 	--architecture native \
-	--description "Bro Passive DNS" \
-	./bro-pdns=/usr/bin/
+	--description "Zeek Passive DNS" \
+	./zeek-pdns=/usr/bin/
